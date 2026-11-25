@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef } from "react";
 import { AppIcon } from "./app-icons";
+import { ThemeToggle } from "./theme-toggle";
 import { WorkeztLogo, WorkeztMark } from "./workezt-logo";
 import { currentApp, type LauncherApp } from "@/lib/launcher";
 import { switchOrganization } from "@/app/(app)/shell-actions";
@@ -17,6 +18,10 @@ type Props = {
   unread: number;
   pendingApprovals: number;
 };
+
+/** Botón de acción rápida de la barra superior (tema, aprobaciones, notificaciones). */
+const QUICK = "relative grid h-8 w-8 place-items-center rounded-full text-stone-600 transition hover:bg-[var(--ork-violet)]/10 hover:text-[var(--ork-violet)] focus-visible:outline-2 focus-visible:outline-[var(--ork-violet)]";
+const BADGE = "absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--ork-pink)] px-1 text-[9.5px] font-bold leading-none text-white ring-2 ring-[var(--ork-paper-light)]";
 
 export function TopBar({ apps, org, memberships, user, unread, pendingApprovals }: Props) {
   const path = usePathname();
@@ -71,14 +76,22 @@ export function TopBar({ apps, org, memberships, user, unread, pendingApprovals 
         </form>
 
         <div className="ml-auto flex items-center gap-1 lg:ml-0">
-          <Link href="/approvals" title="Aprobaciones" className="relative grid h-9 w-9 place-items-center rounded-lg hover:bg-black/5">
-            <AppIcon name="approvals" size={22} />
-            {pendingApprovals > 0 && <span className="absolute -right-0.5 -top-0.5 rounded-full bg-[var(--ork-pink)] px-1.5 text-[10px] font-semibold text-white">{pendingApprovals}</span>}
-          </Link>
-          <Link href="/notifications" title="Notificaciones" className="relative grid h-9 w-9 place-items-center rounded-lg hover:bg-black/5">
-            <AppIcon name="notifications" size={22} />
-            {unread > 0 && <span className="absolute -right-0.5 -top-0.5 rounded-full bg-[var(--ork-pink)] px-1.5 text-[10px] font-semibold text-white">{unread}</span>}
-          </Link>
+          {/* Acciones rápidas: mismo estilo lineal, agrupadas en una píldora */}
+          <div className="flex items-center gap-0.5 rounded-full border border-[var(--ork-rule)] bg-white/70 p-1 shadow-sm">
+            <ThemeToggle className={QUICK} />
+            <Link href="/approvals" title={pendingApprovals ? `Aprobaciones · ${pendingApprovals} pendiente(s)` : "Aprobaciones"} aria-label="Aprobaciones" className={QUICK}>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 3l7 3v5c0 4.6-3 8.2-7 10-4-1.8-7-5.4-7-10V6z" /><path d="m8.8 12 2.2 2.2 4.4-4.6" />
+              </svg>
+              {pendingApprovals > 0 && <span className={BADGE}>{pendingApprovals > 99 ? "99+" : pendingApprovals}</span>}
+            </Link>
+            <Link href="/notifications" title={unread ? `Notificaciones · ${unread} sin leer` : "Notificaciones"} aria-label="Notificaciones" className={QUICK}>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M6 9a6 6 0 1 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9" /><path d="M10 19a2 2 0 0 0 4 0" />
+              </svg>
+              {unread > 0 && <span className={BADGE}>{unread > 99 ? "99+" : unread}</span>}
+            </Link>
+          </div>
 
           {memberships.length > 1 ? (
             <form ref={formRef} action={switchOrganization}>

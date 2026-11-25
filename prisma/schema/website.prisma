@@ -1,0 +1,35 @@
+// ═════════════════════════════ APP: SITIO WEB (formularios conectados al CRM) ═════════════════════════════
+// Formulario público por empresa (/f/<slug>, incrustable en su sitio). Cada envío queda como solicitud y,
+// si así se configura, crea cliente + contacto + oportunidad en el CRM y avisa al responsable.
+// La configuración del formulario vive en Organization.settings.website (lib/apps/website.ts).
+
+model WebLead {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  company        String    @default("")
+  email          String
+  phone          String    @default("")
+  city           String    @default("")
+  /// Opción elegida en "¿Qué te interesa?"
+  interest       String    @default("")
+  message        String    @default("")
+  /// Aceptó el tratamiento de datos (Ley 1581 de 2012)
+  consent        Boolean   @default(false)
+  /// NEW | CONVERTED | DISCARDED
+  status         String    @default("NEW")
+  customerId     String?
+  opportunityId  String?
+  /// Página desde la que llegó (referer o ?src=) y parámetros utm_*
+  source         String    @default("")
+  utm            Json      @default("{}")
+  /// Huella anónima (hash de IP) para limitar envíos repetidos; no se guarda la IP
+  ipHash         String    @default("")
+  userAgent      String    @default("")
+  handledById    String?
+  handledAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, ipHash, createdAt])
+}

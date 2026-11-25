@@ -20,7 +20,12 @@ export async function login(_: ActionResult, form: FormData): Promise<ActionResu
     return { error: "Credenciales inválidas" };
   }
   clearLoginFailures([`e:${email}`]);
-  const first = await prisma.membership.findFirst({ where: { userId: user.id, status: "ACTIVE" }, orderBy: { createdAt: "asc" } });
+  // Desde el login propio de una empresa (/login/<slug>) se entra a esa empresa si la persona pertenece a ella
+  const orgSlug = String(form.get("org") ?? "");
+  const preferred = orgSlug
+    ? await prisma.membership.findFirst({ where: { userId: user.id, status: "ACTIVE", organization: { slug: orgSlug } } })
+    : null;
+  const first = preferred ?? (await prisma.membership.findFirst({ where: { userId: user.id, status: "ACTIVE" }, orderBy: { createdAt: "asc" } }));
   await writeSession({ sub: user.id, org: first?.organizationId });
   const next = String(form.get("next") ?? "");
   if (!first) redirect(user.isPlatformAdmin ? "/platform" : "/onboarding/new");

@@ -209,3 +209,9 @@ export function AppGrid({ items }: { items: GridItem[] }) {
     </>
   );
 }
+
+/** Orden propio guardado del lanzador (el mismo que usa el dock inferior). */
+export function useSavedAppOrder(): string[] {
+  const raw = useSyncExternalStore(subscribe, readPositionsRaw, () => "");
+  return parse(raw);
+}

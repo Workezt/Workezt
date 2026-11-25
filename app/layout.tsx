@@ -13,9 +13,15 @@ export const metadata: Metadata = {
   description: "Workezt by OR-K — la operación de tu empresa, en armonía.",
 };
 
+/** Aplica el modo claro/oscuro guardado antes de pintar (sin destello). Ver components/theme-toggle.tsx */
+const MODE_SCRIPT = `try{var m=localStorage.getItem("wz.mode");var d=m==="dark"||(m!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.dataset.mode=d?"dark":"light"}catch(e){}`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="es" className={`${dmSans.variable} ${anton.variable} ${instrument.variable} ${geistMono.variable} ${poppins.variable} h-full antialiased`}>
+    <html lang="es" className={`${dmSans.variable} ${anton.variable} ${instrument.variable} ${geistMono.variable} ${poppins.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: MODE_SCRIPT }} />
+      </head>
       <body className="min-h-full">{children}</body>
     </html>
   );

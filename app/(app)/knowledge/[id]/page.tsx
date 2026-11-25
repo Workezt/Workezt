@@ -8,6 +8,9 @@ import { ActionForm, SubmitButton } from "@/components/action-form";
 import { Badge, btn, Card, Field, input, PageHeader, SEVERITY_LABEL, SEVERITY_TONE } from "@/components/ui";
 import { dateTime } from "@/lib/ui/format";
 import { addRelation, approveKnowledge, saveKnowledge } from "../actions";
+import { RemoveVideoButton, VideoUploader } from "@/components/video-uploader";
+import { fileUrl } from "@/lib/core/files";
+import { mediaConfigured } from "@/lib/core/media";
 
 const REL = Object.fromEntries(RELATIONS.map((r) => [r.value, r.label]));
 
@@ -16,10 +19,11 @@ export default async function KnowledgeDetail({ params }: PageProps<"/knowledge/
   const { id } = await params;
   const k = await ctx.db.knowledgeItem.findUnique({ where: { id }, include: { versions: { orderBy: { version: "desc" } } } });
   if (!k) notFound();
-  const [users, nodes, edges, insights] = await Promise.all([
+  const [users, nodes, edges, insights, videos] = await Promise.all([
     orgUsers(ctx), graphNodes(ctx),
     ctx.db.graphEdge.findMany({ where: { OR: [{ fromType: "KNOWLEDGE", fromId: id }, { toType: "KNOWLEDGE", toId: id }] } }),
     ctx.hasModule("radar") && ctx.can("radar.read") ? ctx.db.insight.findMany({ where: { entityType: "knowledge", entityId: id, status: "OPEN" } }) : [],
+    ctx.db.fileObject.findMany({ where: { entityType: "knowledge_video", entityId: id }, orderBy: { createdAt: "asc" }, select: { id: true, name: true, size: true } }),
   ]);
   const userMap = new Map(users.map((u) => [u.id, u.name]));
   const self = `KNOWLEDGE:${id}`;
@@ -53,6 +57,29 @@ export default async function KnowledgeDetail({ params }: PageProps<"/knowledge/
               </ActionForm>
             ) : <pre className="whitespace-pre-wrap text-sm">{k.body}</pre>}
           </Card>
+          {(videos.length > 0 || canWrite) && (
+            <Card title={`Videos${videos.length ? ` · ${videos.length}` : ""}`}>
+              {videos.length === 0 && <p className="mb-3 text-sm text-slate-500">Agrega un video para explicar el procedimiento (inducción, paso a paso en planta…).</p>}
+              <div className="space-y-5">
+                {videos.map((v) => (
+                  <figure key={v.id}>
+                    <video src={fileUrl(v.id)} controls playsInline preload="metadata" className="aspect-video w-full rounded-xl bg-black" />
+                    <figcaption className="mt-1.5 flex items-center justify-between gap-2 text-xs text-slate-500">
+                      <span className="truncate">{v.name} · {(v.size / 1048576).toFixed(1)} MB</span>
+                      {canWrite && <RemoveVideoButton target={{ kind: "knowledge", itemId: k.id }} fileId={v.id} />}
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+              {canWrite && (
+                <div className="mt-4 border-t border-slate-100 pt-4">
+                  {mediaConfigured()
+                    ? <VideoUploader target={{ kind: "knowledge", itemId: k.id }} label="Agregar video" />
+                    : <p className="text-xs text-amber-700">El almacenamiento de videos aún no está configurado.</p>}
+                </div>
+              )}
+            </Card>
+          )}
           <Card title="Historial de versiones" padded={false}>
             <ul className="divide-y divide-slate-100 text-sm">
               {k.versions.map((v) => <li key={v.id} className="flex justify-between px-5 py-2"><span>v{v.version} · {v.title}</span><span className="text-xs text-slate-400">{v.createdById ? userMap.get(v.createdById) : ""} · {dateTime(v.createdAt)}</span></li>)}

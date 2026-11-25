@@ -31,6 +31,7 @@ export const EVENTS: EventDef[] = [
   { type: "InvoiceIssued", label: "Factura emitida", entityType: "invoice", module: "invoicing", webhook: "invoice.created" },
   { type: "InvoiceOverdue", label: "Factura vencida", entityType: "invoice", module: "invoicing", webhook: "invoice.overdue" },
   { type: "PaymentReceived", label: "Pago recibido", entityType: "invoice", module: "invoicing", webhook: "payment.received" },
+  { type: "WebLeadReceived", label: "Solicitud web recibida", entityType: "web_lead", module: "website", webhook: "website.lead.received" },
   { type: "FinExpenseCreated", label: "Gasto registrado", entityType: "fin_expense", module: "finance", webhook: "finance.expense.created" },
   { type: "NonconformityCreated", label: "No conformidad creada", entityType: "nonconformity", module: "quality", webhook: "nonconformity.created" },
   { type: "RequisitionCreated", label: "Requisición creada", entityType: "requisition", module: "purchasing", webhook: "requisition.created" },

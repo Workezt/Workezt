@@ -228,9 +228,33 @@ export const MODULES: ModuleDef[] = [
     permissions: [{ key: "radar.read", label: "Ver Radar" }, { key: "radar.manage", label: "Gestionar insights" }],
   },
   {
-    key: "website", name: "Website", group: "Comercial", icon: "WE", status: "planned",
-    description: "Sitio web y formularios conectados al CRM.",
-    nav: [], permissions: rw("website", "sitio web"),
+    key: "website", name: "Website", group: "Comercial", icon: "WE", status: "available", dependsOn: ["crm"],
+    description: "Formulario de contacto para tu sitio web conectado al CRM: cada solicitud crea cliente y oportunidad, con WhatsApp y aviso al responsable.",
+    nav: [
+      { label: "Solicitudes", href: "/website", permission: "website.read" },
+      { label: "Formulario", href: "/website/settings", permission: "website.read" },
+    ],
+    permissions: rw("website", "sitio web"),
+  },
+  {
+    key: "flipper", name: "Flipper", group: "Comercial", icon: "FL", status: "available",
+    description: "Cotizador de capacidades empresariales (OR-K Flipper): clientes con varias marcas, capacidades por unidades compartidas o exclusivas, descuentos por combinación y volumen, escenarios, propuesta para el cliente y rentabilidad interna.",
+    nav: [
+      { label: "Inicio", href: "/flipper", permission: "flipper.read" },
+      { label: "Cotizador", href: "/flipper/quoter", permission: "flipper.read" },
+      { label: "Clientes y marcas", href: "/flipper/clients", permission: "flipper.read" },
+      { label: "Capacidades", href: "/flipper/catalog", permission: "flipper.read" },
+      { label: "Cotizaciones", href: "/flipper/quotes", permission: "flipper.read" },
+      { label: "Escenarios", href: "/flipper/scenarios", permission: "flipper.read" },
+      { label: "Indicadores", href: "/flipper/kpis", permission: "flipper.read" },
+      { label: "Rentabilidad", href: "/flipper/profit", permission: "flipper.internal" },
+      { label: "Equipo y costos", href: "/flipper/team", permission: "flipper.internal" },
+      { label: "Configuración", href: "/flipper/settings", permission: "flipper.internal" },
+    ],
+    permissions: [
+      ...rw("flipper", "cotizaciones Flipper"),
+      { key: "flipper.internal", label: "Ver costos, márgenes y configuración de Flipper" },
+    ],
   },
   {
     key: "analytics", name: "Analytics", group: "Inteligencia", icon: "AN", status: "available",

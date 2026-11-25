@@ -38,7 +38,7 @@ export function CategorySelect({ name = "category", defaultValue }: { name?: str
   );
 }
 
-export { RowAction } from "./row-action";
+export { RowAction } from "@/components/row-action";
 
 /** Barra horizontal de avance (gastado vs. presupuesto). */
 export function Bar({ value, max, over }: { value: number; max: number; over?: boolean }) {

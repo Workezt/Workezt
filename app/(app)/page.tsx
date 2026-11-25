@@ -4,6 +4,7 @@ import { launcherApps } from "@/lib/launcher";
 import { AppIcon, familyOf } from "@/components/app-icons";
 import { AppGrid } from "@/components/app-grid";
 import { visibleInsightWhere } from "@/lib/radar/visibility";
+import { fileUrl } from "@/lib/core/files";
 
 export const metadata = { title: "Inicio" };
 
@@ -25,8 +26,17 @@ export default async function Home() {
   return (
     <div className="pb-20">
       <section className="wz-hero relative -mx-4 -mt-6 overflow-hidden sm:-mx-6 sm:mt-0 sm:rounded-3xl">
-        {/* eslint-disable-next-line @next/next/no-img-element -- imagen estática de marca */}
-        <img src="/brand/workezt-orca.jpg" alt="" className="absolute inset-y-0 right-0 h-full w-auto max-w-none opacity-60 [mask-image:linear-gradient(90deg,transparent,#000_30%)] sm:opacity-100" />
+        {ctx.org.branding.heroVideoId ? (
+          <>
+            {/* Video de marca de la empresa (Ajustes → Apariencia) con velo para que el texto se lea */}
+            <video src={fileUrl(ctx.org.branding.heroVideoId)} autoPlay muted loop playsInline preload="metadata" aria-hidden="true"
+              className="absolute inset-0 h-full w-full object-cover motion-reduce:hidden" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-black/10" />
+          </>
+        ) : (
+          /* eslint-disable-next-line @next/next/no-img-element -- imagen estática de marca */
+          <img src="/brand/workezt-orca.jpg" alt="" className="absolute inset-y-0 right-0 h-full w-auto max-w-none opacity-60 [mask-image:linear-gradient(90deg,transparent,#000_30%)] sm:opacity-100" />
+        )}
         <div className="relative px-6 py-9 sm:px-10 sm:py-12">
           <h1 className="font-display text-3xl font-bold tracking-tight text-white sm:text-[40px]">
             Tu empresa, en arm<span className="text-[#c4a6ff]">onía.</span>

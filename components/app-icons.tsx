@@ -103,6 +103,19 @@ const ICONS: Record<string, ReactNode> = {
     <path d="M46 46l12 12" stroke={C.pink} strokeWidth="8" strokeLinecap="round" />
     <path d="M28 35l5 5 9-10" stroke={C.white} strokeWidth="3.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
   </>),
+  flipper: (<>
+    <rect x="4" y="14" width="34" height="44" rx="8" fill={C.lav} transform="rotate(-10 21 36)" />
+    <rect x="24" y="6" width="34" height="44" rx="8" fill={C.violet} style={mx} transform="rotate(8 41 28)" />
+    <circle cx="44" cy="46" r="13" fill={C.pink} style={mx} />
+    <path d="M44 38l2.2 5.8 5.8 2.2-5.8 2.2L44 54l-2.2-5.8-5.8-2.2 5.8-2.2z" fill={C.white} />
+  </>),
+  website: (<>
+    <rect x="4" y="8" width="56" height="42" rx="8" fill={C.lav} />
+    <rect x="4" y="8" width="56" height="10" rx="5" fill={C.violet} style={mx} />
+    <rect x="12" y="26" width="26" height="6" rx="3" fill={C.white} />
+    <rect x="12" y="36" width="18" height="6" rx="3" fill={C.white} />
+    <rect x="38" y="44" width="20" height="12" rx="6" fill={C.pink} style={mx} />
+  </>),
   finance: (<>
     <rect x="6" y="34" width="12" height="24" rx="3" fill={C.lav} />
     <rect x="22" y="22" width="12" height="36" rx="3" fill={C.violet} style={mx} />
@@ -250,7 +263,7 @@ const FAMILY_OF: Record<string, Family> = {
   inventory: "industry", products: "industry", manufacturing: "industry", maintenance: "industry", logistics: "industry",
   quality: "industry", wrench: "industry", truck: "industry", flask: "industry",
   invoicing: "admin", purchasing: "admin", analytics: "admin", import: "admin", finance: "admin",
-  crm: "commercial", sales: "commercial", campaigns: "commercial", studio: "commercial",
+  crm: "commercial", sales: "commercial", campaigns: "commercial", studio: "commercial", website: "commercial", flipper: "commercial",
   ask: "intel", automations: "intel", radar: "intel", sonar: "intel", dashboard: "intel",
 };
 export const familyOf = (name: string): Family => FAMILY_OF[name] ?? "org";
@@ -283,6 +296,18 @@ const GLYPHS: Record<string, (c: string) => ReactNode> = {
   quality: (c) => (<>
     <path d="M32 12l17 6v12c0 10.5-7.3 17.6-17 21-9.7-3.4-17-10.5-17-21V18z" fill={W} />
     <path d="M24 31.5l5.5 5.5L41 25.5" fill="none" stroke={c} strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+  </>),
+  flipper: (c) => (<>
+    <rect x="12" y="17" width="22" height="30" rx="5" {...S} transform="rotate(-10 23 32)" />
+    <rect x="28" y="13" width="22" height="30" rx="5" fill={W} transform="rotate(8 39 28)" />
+    <path d="M39 21l1.8 4.6 4.6 1.8-4.6 1.8L39 34l-1.8-4.6-4.6-1.8 4.6-1.8z" fill={c} />
+  </>),
+  website: (c) => (<>
+    <rect x="11" y="14" width="42" height="34" rx="5" fill={W} />
+    <path d="M11 19a5 5 0 0 1 5-5h32a5 5 0 0 1 5 5v3H11z" {...S} />
+    <rect x="17" y="28" width="18" height="3.5" rx="1.75" fill={c} opacity=".5" />
+    <rect x="17" y="35" width="12" height="3.5" rx="1.75" fill={c} opacity=".5" />
+    <rect x="35" y="33" width="12" height="8" rx="4" fill={c} />
   </>),
   finance: (c) => (<>
     <rect x="12" y="34" width="8" height="15" rx="2" {...S} />

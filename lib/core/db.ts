@@ -32,6 +32,10 @@ export const TENANT_MODELS = new Set([
   "Campaign", "CampaignDaily", "SellerDailyClose", "SellerReportEvent", "CalendarConfig", "SellerCalendarSetting", "CalendarHoliday",
   // Finanzas
   "FinRecurringCost", "FinExpense", "FinIncome", "FinBudget",
+  // Sitio web
+  "WebLead",
+  // Flipper (cotizador de capacidades)
+  "FlipperSettings", "FlipperInternal", "FlipperClient", "FlipperQuote", "FlipperDraft",
 ]);
 
 const WHERE_OPS = new Set([

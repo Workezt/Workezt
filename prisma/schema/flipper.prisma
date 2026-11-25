@@ -1,0 +1,66 @@
+// ═════════════════════════════ APP: FLIPPER (cotizador de capacidades) ═════════════════════════════
+// Port de OR-K Flipper: capacidades empresariales móviles y flexibles que se cotizan por unidades y se
+// reparten entre las marcas de un cliente. Mismo modelo de datos que la versión en la nube de Flipper:
+// cada cliente y cada cotización es un documento JSON (lo calcula lib/apps/flipper/engine.ts), y la
+// información interna (equipo, costos y notas privadas) vive aparte para no enviarla a quien no la ve.
+
+/// Configuración comercial pública de la organización: parámetros, catálogo de capacidades y consecutivo.
+model FlipperSettings {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  /// { settings, catalog, counters } — sin equipo ni costos
+  data           Json
+  updatedById    String?
+  updatedAt      DateTime @updatedAt
+}
+
+/// Información interna (solo flipper.internal): perfiles del equipo, costos por capacidad y notas privadas.
+model FlipperInternal {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  /// { team, capProfiles, costs, notes: { [quoteId]: texto } }
+  data           Json
+  updatedById    String?
+  updatedAt      DateTime @updatedAt
+}
+
+/// Cliente con sus marcas (documento del motor de Flipper).
+model FlipperClient {
+  /// Identificador generado por el motor (cli_…)
+  id             String   @id
+  organizationId String
+  name           String
+  data           Json
+  updatedById    String?
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+/// Cotización guardada (conserva sus tarifas y reglas históricas). Sin notas privadas.
+model FlipperQuote {
+  /// Identificador generado por el motor (q_…)
+  id             String   @id
+  organizationId String
+  number         String?
+  clientName     String   @default("")
+  status         String   @default("Borrador")
+  /// Honorarios netos mensuales antes de IVA (para listados e indicadores)
+  net            Decimal  @default(0) @db.Decimal(18, 2)
+  data           Json
+  updatedById    String?
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, updatedAt])
+}
+
+/// Cotización en curso de cada usuario (borrador del asistente de 5 pasos).
+model FlipperDraft {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  data           Json?
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, userId])
+}

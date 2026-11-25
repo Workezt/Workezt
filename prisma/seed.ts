@@ -22,6 +22,7 @@ import { createCustomEntity, createRecord } from "@/lib/apps/custom-objects";
 import { seedHistory } from "./history";
 import { seedOperations } from "./seed-operations";
 import { seedFinance } from "./seed-finance";
+import { saveWebsiteConfig } from "@/lib/apps/website";
 import { createNonconformity } from "@/lib/apps/quality";
 import { createKnowledge, link, publishKnowledge } from "@/lib/apps/knowledge";
 import { addSonarItem } from "@/lib/apps/sonar";
@@ -325,6 +326,14 @@ async function main() {
 
   // Finanzas: gastos fijos, gastos sueltos, ingreso proyectado y presupuesto del mes
   await seedFinance({ ...P, actorId: finanzas.id }, { customerId: customers[0].id });
+
+  // Sitio web: formulario de contacto (datos de presservac.com/contacto) que pasa las solicitudes al CRM
+  await saveWebsiteConfig(P, {
+    enabled: true, ownerId: comercial.id, autoConvert: true,
+    title: "Contáctenos", intro: "Escríbanos o visítenos en horario de oficina: lunes a viernes de 7:00 a. m. a 5:00 p. m.",
+    interests: ["Empaques al vacío", "Bolsas termoencogibles", "Maquinaria de empaque", "Servicio técnico", "Otro"],
+    whatsapp: "573160268619", phone: "+57 316 026 8619", email: "gestioncomercial@presservac.com.co", address: "Calle 4 #34a-48, Bogotá",
+  });
 
   // Cartera adicional (vencida hace 8 días)
   await P.db.invoice.create({ data: {
