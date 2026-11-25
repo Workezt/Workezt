@@ -55,11 +55,26 @@ export function shape(ctx: ApiContext, res: Resource, row: unknown) {
 
 type Delegate = { findMany: (a: object) => Promise<unknown[]>; count: (a: object) => Promise<number> };
 
+export function resourceScope(ctx: ApiContext, res: Resource) {
+  return ["quote", "sales_order"].includes(res.entity) && isRestricted(ctx.permissions, "scope:own:sales")
+    ? { ownerId: ctx.actorId ?? "__no_actor__" } : {};
+}
+
+export function canReadResourceRow(ctx: ApiContext, res: Resource, row: Record<string, unknown>) {
+  const scope = resourceScope(ctx, res);
+  return !("ownerId" in scope) || row.ownerId === scope.ownerId;
+}
+
+export function positiveInteger(value: string | null, fallback: number, maximum: number) {
+  const n = Number(value);
+  return Number.isSafeInteger(n) && n > 0 ? Math.min(n, maximum) : fallback;
+}
+
 export async function listResource(ctx: ApiContext, res: Resource, url: URL) {
-  const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit") ?? 25) || 25));
-  const page = Math.max(1, Number(url.searchParams.get("page") ?? 1) || 1);
+  const limit = positiveInteger(url.searchParams.get("limit"), 25, 100);
+  const page = positiveInteger(url.searchParams.get("page"), 1, 1_000_000);
   const q = url.searchParams.get("q")?.trim();
-  const where = q && res.search?.length ? { OR: res.search.map((f) => ({ [f]: { contains: q, mode: "insensitive" } })) } : {};
+  const where = { ...resourceScope(ctx, res), ...(q && res.search?.length ? { OR: res.search.map((f) => ({ [f]: { contains: q, mode: "insensitive" } })) } : {}) };
   const delegate = ctx.db[res.model] as unknown as Delegate;
   const [rows, total] = await Promise.all([
     delegate.findMany({ where, orderBy: { createdAt: "desc" }, take: limit, skip: (page - 1) * limit }),

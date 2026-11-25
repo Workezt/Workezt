@@ -2,7 +2,7 @@ import type { ExecContext, OrgContext } from "./context";
 import { emitEvent } from "./events";
 import { addActivity, notify, usersWithRole } from "./notify";
 import { applyStatus } from "./workflow";
-import { ENTITIES, getEntityOrNull } from "./entities";
+import { getEntityOrNull } from "./entities";
 import { runActions, type ActionSpec } from "./automations";
 
 export async function requestApproval(
@@ -35,10 +35,11 @@ export async function decideApproval(ctx: OrgContext, approvalId: string, approv
   if (!approval || approval.status !== "PENDING") throw new Error("Aprobación no disponible");
   if (!canDecide(ctx, approval.requiredRoleKey)) throw new Error(`Solo ${approval.requiredRoleKey} puede decidir esta aprobación`);
 
-  await ctx.db.approval.update({
-    where: { id: approval.id },
+  const claimed = await ctx.db.approval.updateMany({
+    where: { id: approval.id, status: "PENDING" },
     data: { status: approve ? "APPROVED" : "REJECTED", decidedById: ctx.user.id, decidedAt: new Date(), comment },
   });
+  if (claimed.count !== 1) throw new Error("Otra persona ya decidió esta aprobación. Recarga la pantalla.");
   await addActivity(ctx, approval.entityType, approval.entityId,
     `${approve ? "Aprobado" : "Rechazado"} por ${ctx.user.name}${comment ? `: ${comment}` : ""}`);
 

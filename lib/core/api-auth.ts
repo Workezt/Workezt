@@ -52,7 +52,9 @@ export function withApi(moduleKey: string, permission: string, handler: (ctx: Ap
       return await handler(ctx, req);
     } catch (e) {
       const err = e as Error & { errors?: unknown };
-      return apiError(err.errors ? 422 : 500, err.message, err.errors);
+      if (err.errors) return apiError(422, "Datos inválidos", err.errors);
+      console.error("[api] request failed", err);
+      return apiError(500, "No se pudo completar la operación");
     }
   };
 }

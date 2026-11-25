@@ -19,6 +19,7 @@ export default async function NewQuote({ searchParams }: PageProps<"/sales/quote
   return (
     <>
       <RecordTopBar listLabel="Cotizaciones" listHref="/sales/quotes" title="Nueva" />
+      <h1 className="mb-5 text-2xl font-semibold">Nueva cotización</h1>
       <div className="rounded-2xl border border-[var(--ork-rule)] bg-white p-6">
         <QuoteEditor showMargin={!ctx.restricted("deny:costs")} action={saveQuote}
           initial={{ customerId: typeof customerId === "string" ? customerId : "", validUntil: new Date(nowMs() + 30 * 86400000).toISOString().slice(0, 10), paymentTermId: "", pricelistId: "", terms: "Oferta válida por 30 días. Precios en pesos colombianos, IVA discriminado.", notes: "",

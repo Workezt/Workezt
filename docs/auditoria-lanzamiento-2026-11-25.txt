@@ -1,0 +1,122 @@
+WORKEZT / ORKEST — AUDITORÍA DE LANZAMIENTO
+Fecha: 25 de noviembre de 2026 (America/Bogota)
+Alcance: código local, pruebas de negocio, compilación, navegación, diseño y comparación funcional.
+Excluido por petición del usuario: suscripción y cobro del SaaS.
+Estado: NO CERTIFICADO PARA LANZAMIENTO PÚBLICO. Hay correcciones verificadas, pero quedan puertas de salida abiertas.
+
+CORRECCIONES IMPLEMENTADAS
+- 12 iconos faltantes de Ajustes y Builder. Se revisaron 97 entradas de navegación.
+- Navegación con selección, foco de teclado y contraste oscuro explícitos.
+- Texto secundario y placeholders más legibles en modo oscuro; etiquetas accesibles en cambios de vista y avisos de formularios.
+- Título visible de Nueva cotización.
+- Equipo y accesos: selección obligatoria de perfil, resumen antes del alta y feedback al actualizar acceso.
+- Asignación, edición y restablecimiento de roles sujetos a los permisos y restricciones del administrador.
+- Nuevas llaves API conservan las restricciones del creador.
+- API de cotizaciones y pedidos aplica scope:own:sales tanto a listados/conteos como a detalles.
+- Paginación API valida enteros finitos; errores de detalle no exponen excepciones de base de datos.
+- Contraseñas generadas usan randomBytes, no Math.random.
+- Inicio de sesión y demo rechazan redirecciones externas, barras inversas y caracteres de control.
+- Facturación de ventas/compras: creación y consumo de cantidades dentro de una transacción con control de concurrencia.
+- Pagos y notas crédito: saldo y movimiento se escriben juntos; conflictos simultáneos se rechazan.
+- Validación de importe finito, fecha, una sola factura y diario activo de banco/caja.
+- Pantallas propias de error recuperable y de página no encontrada.
+- Next.js 16.4.6, Prisma 7.10.1 y dependencias corregidas. Override acotado de Effect 3.22.5 para @prisma/config.
+- El rastreador de rutas devuelve código de fallo cuando encuentra problemas.
+- Lectura de videos de Conocimiento exige módulo, permiso y registro; actividades validan origen, alcance y responsable.
+- Aprobaciones: una sola decisión gana cuando dos personas actúan simultáneamente.
+
+EVIDENCIA DE PRUEBAS
+- Build de producción: correcto con Next.js 16.4.6; generación de 141 entradas estáticas del build, además de rutas dinámicas.
+- TypeScript: correcto.
+- ESLint: cero errores; 11 avisos existentes, principalmente variables sin uso e imágenes sin optimización.
+- npm tras actualizaciones: cero vulnerabilidades reportadas. Esto no equivale a una auditoría de seguridad exhaustiva.
+- Inventario: 63 comprobaciones correctas en ejecución aislada, incluyendo concurrencia y aislamiento entre empresas.
+- Flipper: 15 comprobaciones correctas.
+- Producción local: 808 comprobaciones página/perfil para nueve perfiles, sin errores detectados por el rastreador.
+  Es un recorrido limitado a 180 páginas por perfil y tres registros por patrón; no equivale a probar cada dato/acción.
+- API: 20 comprobaciones correctas en desarrollo y producción local (autenticación, cabeceras, alta, validación, aislamiento, permisos).
+- Precios: 11 comprobaciones correctas. Combos: 10 correctas.
+- Recorridos existentes de compras, producción, facturación, almacenes, campañas, finanzas y sitio web completados.
+  Nota: algunas suites históricas imprimen resultados sin usar aserciones en cada paso; no son cobertura exhaustiva.
+- Prueba nueva de pagos: pago/pago/nota crédito simultáneos producen un solo descuento total, sin duplicados.
+- Prueba nueva de aprobaciones: dos decisiones simultáneas producen una decisión y un evento.
+- Prueba nueva de acceso: delegación, conservación de restricciones, alcance de consultas, paginación y destinos de login.
+- Revisión visual directa: Ajustes y Ventas en escritorio oscuro; ventas, creación de cotización y tablero a 390 px.
+  Sin desbordamiento de la página en esas vistas; tablas/formularios todavía requieren desplazamiento horizontal.
+- La conexión del navegador dejó de responder durante la revisión final de Equipo y accesos.
+  El nuevo selector está validado por TypeScript/build; queda pendiente su interacción visual final y la revisión clara/oscura completa.
+
+HALLAZGOS ABIERTOS ANTES DE LANZAR
+P1 — Entorno de producción no verificado.
+  Vercel rechaza acceso al equipo orkestork del proyecto local (403); autorización del equipo devuelve 404.
+  Falta verificar dominios, variables, secretos, demo pública, cron, almacenamiento y logs del despliegue real.
+  No se publicó ni se modificó producción.
+
+P1 — Alta y recuperación de cuentas incompletas para autoservicio.
+  inviteUser crea una contraseña que el administrador comparte. No hay invitación por correo/token de un solo uso ni recuperación autónoma.
+  User no tiene versión de sesión/revocación por cambio de contraseña. Los JWT tienen vida de siete días.
+  Criterio de cierre: invitación con caducidad y un solo uso, cambio de contraseña por el titular, recuperación y revocación verificadas.
+
+P1 — Operación y recuperación de datos no demostradas.
+  No se ejecutó restauración de un respaldo, simulacro de caída, carga concurrente de producción ni rollback del despliegue.
+  Criterio de cierre: restauración verificable, objetivo de pérdida/recuperación acordado, alertas y responsable de incidentes.
+
+P1 — Transacciones y eventos todavía tienen fronteras pendientes.
+  Facturas/pagos mejorados; eventos y algunos estados derivados se procesan después del commit.
+  validateTransfer escribe stock en transacción, pero backorder, eventos y ganchos del origen siguen después.
+  processEvent no reclama en exclusiva un evento antes de ejecutar automatizaciones; dos workers podrían repetir efectos.
+  decideApproval actualiza decisión y aplica consecuencias en pasos separados.
+  Criterio de cierre: outbox transaccional, exclusión/reintentos idempotentes y pruebas de fallo entre pasos.
+
+P1 — Webhooks necesitan endurecimiento de destinos y concurrencia.
+  createWebhook acepta cualquier URL parseable; attemptDelivery usa fetch sobre ese destino y sigue redirecciones por defecto.
+  Falta política contra acceso a redes internas/metadata y rebinding DNS, y reclamo exclusivo de entregas.
+  Criterio de cierre: transporte con destino permitido/público, redirecciones controladas y pruebas de reintento concurrente.
+
+P1 — Limitación de login por instancia.
+  lib/core/login-throttle.ts guarda intentos en memoria. Varias instancias no comparten el límite.
+  Criterio de cierre: contador compartido o protección equivalente comprobada en la plataforma.
+
+P1 — Revisión de permisos completa aún pendiente.
+  Se corrigieron los huecos identificados en videos de Conocimiento y actividades.
+  Falta cubrir mediante pruebas negativas todas las exportaciones, adjuntos, enlaces y acciones genéricas con perfiles restrictivos.
+
+P1/P2 — Alcance comercial de Facturación.
+  El documento impreso indica expresamente que es interno y no reemplaza una factura electrónica validada por DIAN.
+  No afirmar que el producto ofrece facturación electrónica colombiana completa. Si se incluye en la promesa de lanzamiento,
+  necesita integración/validación separada. Esta observación describe el producto; no es una certificación tributaria.
+
+P2 — Cobertura funcional y de diseño incompleta.
+  Faltan pruebas completas de RR. HH., nómina, mantenimiento, logística, aprobaciones, importación y Builder.
+  Faltan estados vacíos, formularios largos, edición/errores, teclado, contraste medido, modo claro y móvil en todos los módulos.
+  Las tablas móviles son funcionales por scroll, pero no equivalen a un diseño cómodo para trabajo desde teléfono.
+
+P2 — Herramientas y documentación de operación.
+  El README es el texto inicial de Next.js; faltan guía de configuración, matriz de permisos, soporte, migraciones y runbook.
+  Algunas pruebas usan organizaciones demo y algunas no limpian todo si fallan. Separar base de pruebas antes de CI.
+  No se deben usar scripts de seed/reset en producción como mecanismo de despliegue.
+
+COMPARACIÓN CON ERP REALES (REFERENCIAS PRIMARIAS)
+Odoo 19 — Usuarios:
+https://www.odoo.com/documentation/19.0/applications/general/users.html
+  Ofrece permisos por aplicación e invitación por correo para configurar el acceso.
+  Mejora propuesta: una ficha por persona con acceso visible, invitación y estado de aceptación.
+Odoo 19 — Derechos de acceso:
+https://www.odoo.com/documentation/19.0/applications/general/users/access_rights.html
+  Separar perfiles cotidianos de configuración avanzada, conservando pruebas de permisos y multicompañía.
+ERPNext — Permisos:
+https://docs.frappe.io/erpnext/permissions
+  Distingue permisos por rol y restricciones sobre documentos. Workezt necesita comprobar esa coherencia en todas las superficies.
+ERPNext — Ledger inmutable:
+https://docs.frappe.io/erpnext/immutable-ledger-in-erpnext
+  Conserva asientos originales y usa reversiones. La trazabilidad financiera y de inventario debe sobrevivir cancelaciones,
+  reintentos y concurrencia; una lista de auditoría por sí sola no demuestra esa propiedad.
+
+PRIORIDAD DE PRODUCTO
+1. Cerrar seguridad, integridad e infraestructura antes de añadir más aplicaciones.
+2. Terminar Equipo y accesos con invitación/recuperación real y vista comprensible de permisos efectivos.
+3. Hacer claros los siguientes pasos: cotizar → aprobar → pedir → entregar → facturar → cobrar, con documentos relacionados.
+4. Unificar acciones, estados, errores y navegación; adaptar formularios/tablas a tareas móviles frecuentes.
+5. Publicar solo módulos con criterios de aceptación y pruebas completas. Mantener como piloto los demás.
+
+La suscripción no se modificó. Ninguna aprobación de lanzamiento queda implícita en este informe.

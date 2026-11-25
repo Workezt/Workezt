@@ -3,6 +3,10 @@
  * Trazos lineales 24×24; se eligen por el nombre de la sección.
  */
 const P: Record<string, string> = {
+  building: "M4 21V3h12v18M16 9h4v12M2 21h20M8 7h4M8 11h4M8 15h4M9 21v-3h2v3",
+  palette: "M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1.4-3.4 1.5 1.5 0 0 1 1.1-2.6H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8M7 10h.01M10 6h.01M15 6h.01M18 10h.01",
+  code: "M8 6 2 12l6 6M16 6l6 6-6 6M14 3l-4 18",
+  audit: "M13 3H5v18h8M9 7h4M9 11h2M18 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8M21 17l2 3",
   home: "M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
   box: "M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8",
   arrows: "M4 8h13l-3-3M20 16H7l3 3",
@@ -56,6 +60,18 @@ const P: Record<string, string> = {
 };
 
 const BY_LABEL: [RegExp, string][] = [
+  [/^empresa$/i, "building"],
+  [/^apariencia$/i, "palette"],
+  [/^usuarios$/i, "users"],
+  [/^roles$/i, "shield"],
+  [/^API y webhooks$/i, "code"],
+  [/^auditoría$/i, "audit"],
+  [/^objetos$/i, "box"],
+  [/^campos$/i, "form"],
+  [/^workflows$/i, "route"],
+  [/^reglas$/i, "bolt"],
+  [/^tableros$/i, "chart"],
+  [/^plantillas$/i, "layers"],
   [/^inicio|^resumen/i, "home"],
   [/calculadora/i, "calc"],
   [/combos/i, "layers"],

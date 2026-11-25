@@ -203,7 +203,7 @@ export const DETECTORS: Detector[] = [
             title: `"${proc.title}" depende del conocimiento de una sola persona`,
             detail: `Depende de "${k.title}", cuyo único dueño es ${owner?.name ?? "un usuario"} (sin respaldo)`,
             entityType: "knowledge", entityId: proc.id,
-            recommendedAction: "Documentar el conocimiento en una sesión Sonar y asignar un respaldo (BACKUP_FOR)",
+            recommendedAction: "Documentar el conocimiento en una sesión Sonar y asignar una persona de respaldo",
             responsibleUserId: k.ownerId,
           });
         }

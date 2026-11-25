@@ -1,10 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/core/prisma";
 import { actionContext } from "@/lib/core/context";
 import { hashPassword } from "@/lib/core/auth";
-import { hasPermission, isRestrictionKey } from "@/lib/core/permissions";
+import { hasPermission, canGrantPermissions, isRestrictionKey } from "@/lib/core/permissions";
 import { buildCatalog, permissionsFromForm } from "@/lib/core/permission-catalog";
 import { BASE_ROLES } from "@/lib/templates/industries";
 import { audit } from "@/lib/core/notify";
@@ -51,10 +52,12 @@ export async function inviteUser(_: ActionResult, form: FormData): Promise<Actio
     const role = await ctx.db.role.findUnique({ where: { id: s(form, "roleId") } });
     if (!email || !role) return { error: "Email y rol son obligatorios" };
     if (role.key === "OWNER" && ctx.role.key !== "OWNER") return { error: "Solo un propietario puede asignar el rol Propietario" };
+    if (!canGrantPermissions(ctx.permissions, role.permissions)) return { error: "No puedes asignar un rol con más acceso que el tuyo" };
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Ingresa un correo electrónico válido" };
     let user = await prisma.user.findUnique({ where: { email } });
     let tempPassword: string | null = null;
     if (!user) {
-      tempPassword = Math.random().toString(36).slice(2, 10);
+      tempPassword = randomBytes(18).toString("base64url");
       user = await prisma.user.create({ data: { email, name: s(form, "name") || email.split("@")[0], passwordHash: await hashPassword(tempPassword) } });
     }
     const exists = await ctx.db.membership.findFirst({ where: { userId: user.id } });
@@ -71,15 +74,25 @@ export async function updateMembership(form: FormData) {
   const m = await ctx.db.membership.findUniqueOrThrow({ where: { id: s(form, "id") }, include: { role: true } });
   if (m.userId === ctx.user.id) throw new Error("No puedes modificar tu propio acceso");
   if (m.role.key === "OWNER" && ctx.role.key !== "OWNER") throw new Error("Solo un propietario puede modificar a otro propietario");
+  if (!canGrantPermissions(ctx.permissions, m.role.permissions)) throw new Error("No puedes modificar un usuario con más acceso que el tuyo");
   const roleId = s(form, "roleId");
   const status = s(form, "status");
+  if (status && !["ACTIVE", "DISABLED"].includes(status)) throw new Error("Estado de acceso inválido");
   if (roleId) {
     const target = await ctx.db.role.findUniqueOrThrow({ where: { id: roleId } });
     if (target.key === "OWNER" && ctx.role.key !== "OWNER") throw new Error("Solo un propietario puede asignar el rol Propietario");
+    if (!canGrantPermissions(ctx.permissions, target.permissions)) throw new Error("No puedes asignar un rol con más acceso que el tuyo");
   }
   await ctx.db.membership.update({ where: { id: m.id }, data: { ...(roleId ? { roleId } : {}), ...(status ? { status } : {}) } });
   await audit(ctx, "MembershipUpdated", "membership", m.id, { roleId, status });
   revalidatePath("/settings/users");
+}
+
+export async function updateMembershipResult(_: ActionResult, form: FormData): Promise<ActionResult> {
+  return safeAction(async () => {
+    await updateMembership(form);
+    return { ok: "Acceso actualizado" };
+  });
 }
 
 export async function saveRole(_: ActionResult, form: FormData): Promise<ActionResult> {
@@ -88,12 +101,12 @@ export async function saveRole(_: ActionResult, form: FormData): Promise<ActionR
     const id = s(form, "id");
     const existing = id ? await ctx.db.role.findUniqueOrThrow({ where: { id } }) : null;
     if (existing?.isSystem) return { error: "El rol Propietario no se puede modificar" };
+    if (existing && !canGrantPermissions(ctx.permissions, existing.permissions)) return { error: "No puedes modificar un rol con más acceso que el tuyo" };
     const customs = await ctx.db.customEntity.findMany({ where: { active: true }, select: { key: true, labelPlural: true } });
     const catalog = buildCatalog(ctx.modules, customs);
     const permissions = permissionsFromForm(form, catalog, existing?.permissions ?? []);
     // Nadie puede otorgar permisos que no tiene (anti-escalamiento). Las restricciones solo quitan poder.
-    const escalated = permissions.filter((p) => !isRestrictionKey(p) && !hasPermission(ctx.permissions, p));
-    if (escalated.length) return { error: `No puedes otorgar permisos que no tienes: ${escalated.join(", ")}` };
+    if (!canGrantPermissions(ctx.permissions, permissions)) return { error: "No puedes otorgar permisos que no tienes ni quitar tus restricciones de acceso" };
     const name = s(form, "name"), description = s(form, "description") || null;
     if (existing) {
       await ctx.db.role.update({ where: { id: existing.id }, data: { name: name || existing.name, description, permissions } });
@@ -170,8 +183,9 @@ export async function retryDelivery(form: FormData) {
 export async function createApiKey(_: ActionResult, form: FormData): Promise<ActionResult> {
   return safeAction(async () => {
     const ctx = await actionContext("integrations.manage");
-    const scopes = form.getAll("scopes").map(String).filter((p) => hasPermission(ctx.permissions, p));
-    if (!scopes.length) return { error: "Selecciona al menos un permiso" };
+    const requested = form.getAll("scopes").map(String).filter((p) => !isRestrictionKey(p) && hasPermission(ctx.permissions, p));
+    if (!requested.length) return { error: "Selecciona al menos un permiso" };
+    const scopes = [...new Set([...requested, ...ctx.permissions.filter(isRestrictionKey)])];
     const k = generateApiKey();
     await ctx.db.apiKey.create({ data: { organizationId: ctx.orgId, name: s(form, "name") || "API key", prefix: k.prefix, keyHash: k.hash, scopes, createdById: ctx.user.id } });
     await audit(ctx, "ApiKeyCreated", "api_key", null, { prefix: k.prefix, scopes });
@@ -197,9 +211,10 @@ export async function resetMemberPassword(_: ActionResult, form: FormData): Prom
     const m = await ctx.db.membership.findUniqueOrThrow({ where: { id: s(form, "id") }, include: { role: true, user: true } });
     if (m.userId === ctx.user.id) return { error: "Cambia tu propia contraseña desde tu perfil" };
     if (m.role.key === "OWNER" && ctx.role.key !== "OWNER") return { error: "Solo un propietario puede hacerlo con otro propietario" };
+    if (!canGrantPermissions(ctx.permissions, m.role.permissions)) return { error: "No puedes restablecer el acceso de un usuario con más permisos que los tuyos" };
     const orgs = await prisma.membership.count({ where: { userId: m.userId } });
     if (orgs > 1 || m.user.isPlatformAdmin) return { error: "Este usuario también pertenece a otra organización: debe cambiar su contraseña él mismo" };
-    const temp = Math.random().toString(36).slice(2, 6) + Math.random().toString(36).slice(2, 8);
+    const temp = randomBytes(18).toString("base64url");
     await prisma.user.update({ where: { id: m.userId }, data: { passwordHash: await hashPassword(temp) } });
     await audit(ctx, "MemberPasswordReset", "membership", m.id, {});
     return { ok: `Contraseña temporal para ${m.user.email}: ${temp}` };

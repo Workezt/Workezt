@@ -33,21 +33,23 @@
     "demo:org:supabase": "tsx --env-file=.env.supabase scripts/demo-org.ts",
     "dev:workezt": "set -a && . ./.env.workezt && set +a && next dev",
     "db:push:workezt": "node --env-file=.env.workezt node_modules/prisma/build/index.js db push",
-    "db:rls:workezt": "tsx --env-file=.env.workezt scripts/supabase-rls.ts"
+    "db:rls:workezt": "tsx --env-file=.env.workezt scripts/supabase-rls.ts",
+    "test:access": "node --import tsx scripts/test-access-controls.ts",
+    "test:concurrency": "node --import tsx scripts/test-payment-concurrency.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.1",
-    "@prisma/adapter-pg": "^7.10.0",
-    "@prisma/client": "^7.10.0",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
     "bcryptjs": "^3.0.3",
     "dotenv": "^18.0.6",
     "jose": "^6.2.12",
-    "next": "16.4.4",
+    "next": "^16.4.6",
     "pg": "^8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "read-excel-file": "^9.3.10",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
@@ -56,10 +58,15 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.4.4",
+    "eslint-config-next": "^16.4.6",
     "prisma": "^7.10.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@prisma/config": {
+      "effect": "3.22.5"
+    }
   }
 }

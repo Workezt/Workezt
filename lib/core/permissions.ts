@@ -52,3 +52,9 @@ export function isRestricted(granted: readonly string[], key: Restriction) {
 
 /** Las restricciones reducen poder: cualquiera que gestione roles puede asignarlas. */
 export const isRestrictionKey = (k: string) => k.startsWith("deny:") || k.startsWith("scope:");
+
+/** Delegar acceso nunca puede ampliar capacidades ni eliminar restricciones del administrador. */
+export function canGrantPermissions(actor: readonly string[], target: readonly string[]): boolean {
+  return target.every((p) => isRestrictionKey(p) || hasPermission(actor, p))
+    && actor.filter(isRestrictionKey).every((p) => target.includes(p));
+}

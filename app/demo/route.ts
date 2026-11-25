@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/core/prisma";
 import { writeSession } from "@/lib/core/auth";
+import { safeRedirectPath } from "@/lib/core/redirect-path";
 
 /** Acceso público de pruebas: si PUBLIC_DEMO_EMAIL está definido, abre sesión como ese usuario sin clave. */
 export async function GET(req: NextRequest) {
@@ -11,5 +12,5 @@ export async function GET(req: NextRequest) {
   const first = await prisma.membership.findFirst({ where: { userId: user.id, status: "ACTIVE" }, orderBy: { createdAt: "asc" } });
   await writeSession({ sub: user.id, org: first?.organizationId });
   const next = req.nextUrl.searchParams.get("next") ?? "";
-  return NextResponse.redirect(new URL(next.startsWith("/") && !next.startsWith("//") ? next : "/", req.url));
+  return NextResponse.redirect(new URL(safeRedirectPath(next), req.url));
 }

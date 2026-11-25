@@ -63,14 +63,15 @@ export function permissionsFromForm(form: FormData, catalog: AppGroup[], previou
 
 /** Resumen legible de un rol: "Ventas: edición · Inventario: lectura · sin costos". */
 export function summarize(granted: readonly string[], catalog: AppGroup[]) {
-  if (granted.includes("*")) return ["Acceso total"];
-  const parts: string[] = [];
-  for (const g of catalog) {
+  const parts: string[] = granted.includes("*") ? ["Acceso total"] : [];
+  for (const g of granted.includes("*") ? [] : catalog) {
     const lv = g.areas.map((a) => levelOf(granted, a.prefix));
-    if (!lv.length || lv.every((l) => l === "none")) continue;
-    parts.push(`${g.name}: ${lv.every((l) => l === "write") ? "edición" : lv.every((l) => l !== "write") ? "lectura" : "mixto"}`);
+    if (lv.some((l) => l !== "none")) parts.push(`${g.name}: ${lv.every((l) => l === "write") ? "edición" : lv.every((l) => l !== "write") ? "lectura" : "mixto"}`);
+    for (const extra of g.extras) if (hasPermission(granted, extra.key)) parts.push(`${g.name}: ${extra.label}`);
   }
+  if (!granted.includes("*")) for (const p of CORE_PERMISSIONS) if (hasPermission(granted, p.key)) parts.push(p.label);
   if (granted.includes("scope:own:sales")) parts.push("solo sus ventas");
+  if (granted.includes("scope:own:campaigns")) parts.push("solo sus campañas");
   if (granted.includes("deny:costs")) parts.push("sin costos");
   if (granted.includes("deny:export")) parts.push("sin exportar");
   return parts.length ? parts : ["Sin acceso a apps"];

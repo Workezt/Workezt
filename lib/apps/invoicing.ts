@@ -32,18 +32,24 @@ function sumLines(lines: { quantity: number; unitPrice: number; taxRate: number 
 /** Acción CREATE_INVOICE sobre pedido: factura lo facturable según la política de cada producto. */
 export async function invoiceFromSalesOrder(ctx: ExecContext, soId: string) {
   const so = await ctx.db.salesOrder.findUniqueOrThrow({ where: { id: soId } });
+  if (!["confirmed", "done"].includes(so.status)) throw new ValidationError({ status: "Solo se facturan pedidos confirmados" });
   const rows = (await invoiceableLines(ctx, soId)).filter((r) => r.qty > 0);
   if (!rows.length) throw new ValidationError({ lines: "No hay nada por facturar (revisa lo entregado si el producto factura por entrega)" });
   const t = sumLines(rows.map((r) => ({ quantity: r.qty, unitPrice: num(r.line.unitPrice) * (1 - num(r.line.discountPct) / 100), taxRate: num(r.line.taxRate) })));
-  const inv = await ctx.db.invoice.create({
-    data: {
-      organizationId: ctx.orgId, number: await nextNumber(ctx.db, ctx.orgId, "FV"), customerId: so.customerId, salesOrderId: so.id, quoteId: so.quoteId,
-      paymentTermId: so.paymentTermId, subtotal: t.subtotal, tax: t.tax, total: t.total, balance: t.total,
-      dueDate: await dueDateFor(ctx, so.paymentTermId),
-      lines: { create: rows.map((r, i) => ({ productId: r.line.productId, salesOrderLineId: r.line.id, description: r.line.description, quantity: r.qty, unitPrice: t.rows[i].unitPrice, taxRate: num(r.line.taxRate), subtotal: t.rows[i].subtotal })) },
-    },
+  const inv = await ctx.db.$transaction(async (tx) => {
+    for (const r of rows) {
+      const claimed = await tx.salesOrderLine.updateMany({ where: { id: r.line.id, invoicedQty: r.line.invoicedQty }, data: { invoicedQty: { increment: r.qty } } });
+      if (claimed.count !== 1) throw new ValidationError({ lines: "Otra persona actualizó la facturación del pedido. Recarga antes de continuar." });
+    }
+    return tx.invoice.create({
+      data: {
+        organizationId: ctx.orgId, number: await nextNumber(tx as unknown as typeof ctx.db, ctx.orgId, "FV"), customerId: so.customerId, salesOrderId: so.id, quoteId: so.quoteId,
+        paymentTermId: so.paymentTermId, subtotal: t.subtotal, tax: t.tax, total: t.total, balance: t.total,
+        dueDate: await dueDateFor({ ...ctx, db: tx as unknown as typeof ctx.db }, so.paymentTermId),
+        lines: { create: rows.map((r, i) => ({ productId: r.line.productId, salesOrderLineId: r.line.id, description: r.line.description, quantity: r.qty, unitPrice: t.rows[i].unitPrice, taxRate: num(r.line.taxRate), subtotal: t.rows[i].subtotal })) },
+      },
+    });
   });
-  for (const r of rows) await ctx.db.salesOrderLine.update({ where: { id: r.line.id }, data: { invoicedQty: { increment: r.qty } } });
   await recomputeInvoiceStatus(ctx, so.id);
   await addActivity(ctx, "sales_order", so.id, `Factura ${inv.number} emitida`);
   await emitEvent(ctx, "InvoiceIssued", "invoice", inv.id, { number: inv.number, total: t.total });
@@ -53,20 +59,25 @@ export async function invoiceFromSalesOrder(ctx: ExecContext, soId: string) {
 /** Nota crédito total o parcial: disminuye el saldo de la factura original. */
 export async function creditNote(ctx: ExecContext, invoiceId: string, amount?: number, reason = "Nota crédito") {
   const inv = await ctx.db.invoice.findUniqueOrThrow({ where: { id: invoiceId } });
+  if (inv.status !== "issued") throw new ValidationError({ status: "Solo se acreditan facturas pendientes de pago" });
+  if (amount !== undefined && (!Number.isFinite(amount) || amount <= 0)) throw new ValidationError({ amount: "Valor inválido" });
   if (inv.type !== "OUT_INVOICE") throw new ValidationError({ type: "Solo se acreditan facturas" });
   const value = Math.min(amount ?? num(inv.balance), num(inv.balance));
   if (!(value > 0)) throw new ValidationError({ amount: "La factura no tiene saldo para acreditar" });
   const rate = num(inv.subtotal) > 0 ? num(inv.tax) / num(inv.subtotal) : 0;
   const subtotal = Math.round((value / (1 + rate)) * 100) / 100;
-  const nc = await ctx.db.invoice.create({
-    data: {
-      organizationId: ctx.orgId, number: await nextNumber(ctx.db, ctx.orgId, "NC"), type: "OUT_REFUND", refundOfId: inv.id, customerId: inv.customerId,
-      subtotal, tax: value - subtotal, total: value, balance: 0, dueDate: new Date(), status: "paid", paidAt: new Date(),
-      lines: { create: [{ description: `${reason} · ${inv.number}`, quantity: 1, unitPrice: subtotal, taxRate: Math.round(rate * 10000) / 100, subtotal }] },
-    },
+  const balance = Math.round((num(inv.balance) - value) * 100) / 100;
+  const nc = await ctx.db.$transaction(async (tx) => {
+    const claimed = await tx.invoice.updateMany({ where: { id: inv.id, balance: inv.balance, status: inv.status }, data: { balance, ...(balance <= 0 ? { status: "paid", paidAt: new Date() } : {}) } });
+    if (claimed.count !== 1) throw new ValidationError({ amount: "El saldo cambió. Recarga la factura antes de emitir la nota crédito." });
+    return tx.invoice.create({
+      data: {
+        organizationId: ctx.orgId, number: await nextNumber(tx as unknown as typeof ctx.db, ctx.orgId, "NC"), type: "OUT_REFUND", refundOfId: inv.id, customerId: inv.customerId,
+        subtotal, tax: value - subtotal, total: value, balance: 0, dueDate: new Date(), status: "paid", paidAt: new Date(),
+        lines: { create: [{ description: `${reason} · ${inv.number}`, quantity: 1, unitPrice: subtotal, taxRate: Math.round(rate * 10000) / 100, subtotal }] },
+      },
+    });
   });
-  const balance = num(inv.balance) - value;
-  await ctx.db.invoice.update({ where: { id: inv.id }, data: { balance, ...(balance <= 0 ? { status: "paid", paidAt: new Date() } : {}) } });
   await emitEvent(ctx, "CreditNoteIssued", "invoice", nc.id, { number: nc.number, invoice: inv.number, amount: value });
   return nc;
 }
@@ -82,14 +93,19 @@ export async function billFromPurchaseOrder(ctx: ExecContext, poId: string, supp
   }).filter((r) => r.qty > 0);
   if (!rows.length) throw new ValidationError({ lines: "No hay cantidades recibidas pendientes de facturar" });
   const t = sumLines(rows.map((r) => ({ quantity: r.qty, unitPrice: num(r.line.unitPrice), taxRate: num(r.line.taxRate) })));
-  const bill = await ctx.db.bill.create({
-    data: {
-      organizationId: ctx.orgId, number: await nextNumber(ctx.db, ctx.orgId, "FP"), supplierRef: supplierRef || null, supplierId: po.supplierId, purchaseOrderId: po.id,
-      subtotal: t.subtotal, tax: t.tax, total: t.total, balance: t.total, dueDate: await dueDateFor(ctx, po.supplier.paymentTermId),
-      lines: { create: rows.map((r, i) => ({ productId: r.line.productId, purchaseOrderLineId: r.line.id, description: r.line.description, quantity: r.qty, unitPrice: num(r.line.unitPrice), taxRate: num(r.line.taxRate), subtotal: t.rows[i].subtotal })) },
-    },
+  const bill = await ctx.db.$transaction(async (tx) => {
+    for (const r of rows) {
+      const claimed = await tx.purchaseOrderLine.updateMany({ where: { id: r.line.id, billedQty: r.line.billedQty }, data: { billedQty: { increment: r.qty } } });
+      if (claimed.count !== 1) throw new ValidationError({ lines: "Otra persona actualizó la facturación de la compra. Recarga antes de continuar." });
+    }
+    return tx.bill.create({
+      data: {
+        organizationId: ctx.orgId, number: await nextNumber(tx as unknown as typeof ctx.db, ctx.orgId, "FP"), supplierRef: supplierRef || null, supplierId: po.supplierId, purchaseOrderId: po.id,
+        subtotal: t.subtotal, tax: t.tax, total: t.total, balance: t.total, dueDate: await dueDateFor({ ...ctx, db: tx as unknown as typeof ctx.db }, po.supplier.paymentTermId),
+        lines: { create: rows.map((r, i) => ({ productId: r.line.productId, purchaseOrderLineId: r.line.id, description: r.line.description, quantity: r.qty, unitPrice: num(r.line.unitPrice), taxRate: num(r.line.taxRate), subtotal: t.rows[i].subtotal })) },
+      },
+    });
   });
-  for (const r of rows) await ctx.db.purchaseOrderLine.update({ where: { id: r.line.id }, data: { billedQty: { increment: r.qty } } });
   const fresh = await ctx.db.purchaseOrderLine.findMany({ where: { purchaseOrderId: po.id } });
   const billed = fresh.every((l) => num(l.billedQty) >= num(l.quantity));
   await ctx.db.purchaseOrder.update({ where: { id: po.id }, data: { billStatus: billed ? "billed" : "partial" } });
@@ -99,20 +115,25 @@ export async function billFromPurchaseOrder(ctx: ExecContext, poId: string, supp
 }
 
 export async function registerPayment(ctx: ExecContext, d: { invoiceId?: string; billId?: string; amount: number; journalId?: string; date?: string; reference?: string }) {
-  if (!(d.amount > 0)) throw new ValidationError({ amount: "Valor inválido" });
+  if (!Number.isFinite(d.amount) || !(d.amount > 0)) throw new ValidationError({ amount: "Valor inválido" });
+  if (!!d.invoiceId === !!d.billId) throw new ValidationError({ document: "Selecciona una sola factura para el pago" });
   const journal = d.journalId
     ? await ctx.db.journal.findUniqueOrThrow({ where: { id: d.journalId } })
     : await ctx.db.journal.findFirst({ where: { type: "BANK", active: true } });
-  if (!journal) throw new ValidationError({ journalId: "Configura un diario de banco o caja" });
+  if (!journal || !journal.active || !["BANK", "CASH"].includes(journal.type)) throw new ValidationError({ journalId: "Selecciona un diario activo de banco o caja" });
   const date = d.date ? new Date(d.date) : new Date();
+  if (Number.isNaN(date.getTime())) throw new ValidationError({ date: "Fecha de pago inválida" });
 
   if (d.invoiceId) {
     const inv = await ctx.db.invoice.findUniqueOrThrow({ where: { id: d.invoiceId }, include: { customer: true } });
     if (inv.status !== "issued") throw new ValidationError({ status: "La factura no está pendiente de pago" });
     const amount = Math.min(d.amount, num(inv.balance));
     const balance = Math.round((num(inv.balance) - amount) * 100) / 100;
-    await ctx.db.payment.create({ data: { organizationId: ctx.orgId, number: await nextNumber(ctx.db, ctx.orgId, "REC"), direction: "INBOUND", journalId: journal.id, invoiceId: inv.id, partnerName: inv.customer.name, amount, date, reference: d.reference, createdById: ctx.actorId } });
-    await ctx.db.invoice.update({ where: { id: inv.id }, data: { balance, status: balance <= 0 ? "paid" : "issued", paidAt: balance <= 0 ? date : null } });
+    await ctx.db.$transaction(async (tx) => {
+      const claimed = await tx.invoice.updateMany({ where: { id: inv.id, balance: inv.balance, status: "issued" }, data: { balance, status: balance <= 0 ? "paid" : "issued", paidAt: balance <= 0 ? date : null } });
+      if (claimed.count !== 1) throw new ValidationError({ amount: "El saldo cambió. Recarga el documento antes de registrar el pago." });
+      await tx.payment.create({ data: { organizationId: ctx.orgId, number: await nextNumber(tx as unknown as typeof ctx.db, ctx.orgId, "REC"), direction: "INBOUND", journalId: journal.id, invoiceId: inv.id, partnerName: inv.customer.name, amount, date, reference: d.reference, createdById: ctx.actorId } });
+    });
     await emitEvent(ctx, "PaymentReceived", "invoice", inv.id, { amount, balance, journal: journal.name });
     return { amount, balance };
   }
@@ -121,8 +142,11 @@ export async function registerPayment(ctx: ExecContext, d: { invoiceId?: string;
     if (bill.status !== "posted") throw new ValidationError({ status: "La factura de proveedor no está pendiente" });
     const amount = Math.min(d.amount, num(bill.balance));
     const balance = Math.round((num(bill.balance) - amount) * 100) / 100;
-    await ctx.db.payment.create({ data: { organizationId: ctx.orgId, number: await nextNumber(ctx.db, ctx.orgId, "PAG"), direction: "OUTBOUND", journalId: journal.id, billId: bill.id, partnerName: bill.supplier.name, amount, date, reference: d.reference, createdById: ctx.actorId } });
-    await ctx.db.bill.update({ where: { id: bill.id }, data: { balance, status: balance <= 0 ? "paid" : "posted", paidAt: balance <= 0 ? date : null } });
+    await ctx.db.$transaction(async (tx) => {
+      const claimed = await tx.bill.updateMany({ where: { id: bill.id, balance: bill.balance, status: "posted" }, data: { balance, status: balance <= 0 ? "paid" : "posted", paidAt: balance <= 0 ? date : null } });
+      if (claimed.count !== 1) throw new ValidationError({ amount: "El saldo cambió. Recarga el documento antes de registrar el pago." });
+      await tx.payment.create({ data: { organizationId: ctx.orgId, number: await nextNumber(tx as unknown as typeof ctx.db, ctx.orgId, "PAG"), direction: "OUTBOUND", journalId: journal.id, billId: bill.id, partnerName: bill.supplier.name, amount, date, reference: d.reference, createdById: ctx.actorId } });
+    });
     await emitEvent(ctx, "PaymentSent", "bill", bill.id, { amount, balance, journal: journal.name });
     return { amount, balance };
   }

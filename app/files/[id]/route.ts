@@ -16,6 +16,9 @@ export async function GET(req: NextRequest, { params }: RouteContext<"/files/[id
   if (f.entityType?.startsWith("hr_") && !(await canReadHrFile(ctx, f))) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
+  if (f.entityType === "knowledge_video" && (!ctx.hasModule("knowledge") || !ctx.can("knowledge.read") || !f.entityId || !(await ctx.db.knowledgeItem.findUnique({ where: { id: f.entityId }, select: { id: true } })))) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
   // Multimedia en Supabase Storage: redirige a una URL firmada de corta duración (soporta rangos para <video>)
   if (f.storageKey.startsWith("sb:")) {
     const url = await signedMediaUrl(f.storageKey, 60 * 30);

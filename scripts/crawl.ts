@@ -66,5 +66,6 @@ async function main() {
     for (const i of r.issues) console.log("   " + i);
   }
   console.log(`\nTOTAL hallazgos: ${total}`);
+  if (total > 0) process.exitCode = 1;
 }
 main().finally(() => prisma.$disconnect());

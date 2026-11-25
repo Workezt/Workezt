@@ -162,7 +162,7 @@ export function ControlPanel({ title, newHref, newLabel = "+ Crear", filters, gr
           {views.length > 1 && (
             <div className="flex rounded-full bg-stone-100 p-1" role="group" aria-label="Tipo de vista">
               {views.map((v) => (
-                <button key={v.key} type="button" title={v.label} aria-pressed={view === v.key} onClick={() => setParam("view", v.key === views[0].key ? null : v.key, true)}
+                <button key={v.key} type="button" title={v.label} aria-label={v.label} aria-pressed={view === v.key} onClick={() => setParam("view", v.key === views[0].key ? null : v.key, true)}
                   className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm ${view === v.key ? "bg-white font-medium text-[var(--ork-purple)] shadow-sm" : "text-stone-600 hover:text-stone-900"}`}>
                   <svg viewBox="0 0 20 20" width="15" height="15" fill={v.icon === "kanban" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">{ICON[v.icon]}</svg>
                   <span className="hidden sm:inline">{v.label}</span>

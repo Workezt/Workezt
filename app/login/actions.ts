@@ -6,6 +6,7 @@ import { clearLoginFailures, loginBlocked, recordLoginFailure } from "@/lib/core
 import { prisma } from "@/lib/core/prisma";
 import { clearSession, verifyPassword, writeSession } from "@/lib/core/auth";
 import type { ActionResult } from "@/components/action-form";
+import { safeRedirectPath } from "@/lib/core/redirect-path";
 
 export async function login(_: ActionResult, form: FormData): Promise<ActionResult> {
   const email = String(form.get("email") ?? "").trim().toLowerCase();
@@ -29,7 +30,7 @@ export async function login(_: ActionResult, form: FormData): Promise<ActionResu
   await writeSession({ sub: user.id, org: first?.organizationId });
   const next = String(form.get("next") ?? "");
   if (!first) redirect(user.isPlatformAdmin ? "/platform" : "/onboarding/new");
-  redirect(next.startsWith("/") ? next : "/");
+  redirect(safeRedirectPath(next));
 }
 
 export async function logout() {

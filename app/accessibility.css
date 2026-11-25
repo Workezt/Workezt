@@ -1,0 +1,14 @@
+/* Text colors are separate from background/border scales in dark mode. */
+html[data-mode="dark"] :is(.text-slate-400, .text-stone-400, .text-gray-400, .text-zinc-400, .text-neutral-400) {
+  color: #a8a5bf;
+}
+html[data-mode="dark"] :is(.text-slate-500, .text-stone-500, .text-gray-500, .text-zinc-500, .text-neutral-500) {
+  color: #b9b6cc;
+}
+html[data-mode="dark"] :is(input, textarea)::placeholder {
+  color: #a8a5bf;
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wz-dock-item, .app-tile, .app-section { transition: none; }
+}

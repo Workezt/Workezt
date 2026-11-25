@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Anton, DM_Sans, Instrument_Serif, Geist_Mono, Poppins } from "next/font/google";
 import "./globals.css";
+import "./accessibility.css";
 
 const dmSans = DM_Sans({ variable: "--font-dm-sans", subsets: ["latin"] });
 const anton = Anton({ variable: "--font-anton", subsets: ["latin"], weight: "400" });
