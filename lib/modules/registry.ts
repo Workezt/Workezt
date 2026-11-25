@@ -41,6 +41,7 @@ export const MODULES: ModuleDef[] = [
       { label: "Cotizaciones", href: "/sales/quotes", permission: "sales.quotes.read" },
       { label: "Pedidos", href: "/sales/orders", permission: "sales.quotes.read" },
       { label: "Listas de precios", href: "/sales/pricelists", permission: "sales.quotes.write" },
+      { label: "Calculadora", href: "/sales/calculator", permission: "sales.quotes.read" },
     ],
     permissions: [...rw("sales.quotes", "cotizaciones")],
   },
@@ -50,13 +51,17 @@ export const MODULES: ModuleDef[] = [
     nav: [
       { label: "Campañas", href: "/campaigns", permission: "campaigns.read" },
       { label: "Calendario", href: "/campaigns/calendar", permission: "campaigns.read" },
+      { label: "Métricas", href: "/campaigns/metrics", permission: "campaigns.read" },
     ],
     permissions: [...rw("campaigns", "campañas"), { key: "campaigns.manage", label: "Configurar calendario comercial" }],
   },
   {
     key: "products", name: "Products", group: "Operaciones", icon: "PR", status: "available",
     description: "Catálogo de productos y servicios, precios y costos.",
-    nav: [{ label: "Productos", href: "/products", permission: "products.read" }],
+    nav: [
+      { label: "Productos", href: "/products", permission: "products.read" },
+      { label: "Combos", href: "/products/combos", permission: "products.read" },
+    ],
     permissions: rw("products", "productos"),
   },
   {
@@ -86,7 +91,7 @@ export const MODULES: ModuleDef[] = [
   },
   {
     key: "manufacturing", name: "Manufacturing", group: "Operaciones", icon: "MF", status: "available", dependsOn: ["products", "inventory"],
-    description: "Listas de materiales (BoM), órdenes de producción, centros de trabajo y planificación de materiales.",
+    description: "Órdenes de producción, inyección, ensamble, moldes, listas de materiales (BoM), centros de trabajo y planificación.",
     nav: [
       { label: "Órdenes de producción", href: "/manufacturing/orders", permission: "manufacturing.read" },
       { label: "Listas de materiales", href: "/manufacturing/boms", permission: "manufacturing.read" },

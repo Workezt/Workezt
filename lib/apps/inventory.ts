@@ -5,6 +5,7 @@ import { getFieldDefs, validateCustomFields } from "@/lib/core/custom-fields";
 import { ValidationError } from "./crm";
 import { quickMove } from "./stock";
 import { addActivity } from "@/lib/core/notify";
+import { recordPriceChange } from "./pricing";
 
 export const ProductInput = z.object({
   sku: z.string().trim().min(1, "SKU obligatorio"),
@@ -67,6 +68,7 @@ export async function updateProduct(ctx: ExecContext, id: string, raw: unknown) 
     ["Stock mínimo", before.minStock, after.minStock, (v) => Number(v).toLocaleString("es-CO")], ["Nombre", before.name, after.name, String],
   ];
   for (const [label, a, b, f] of track) if (String(a) !== String(b)) await addActivity(ctx, "product", id, `${label}: ${f(a)} → ${f(b)}`, "TRACKING");
+  await recordPriceChange(ctx, id, before.price, after.price);
   return after;
 }
 

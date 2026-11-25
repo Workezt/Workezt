@@ -2,6 +2,7 @@ import { requireContext } from "@/lib/core/context";
 import { launcherApps } from "@/lib/launcher";
 import { TopBar } from "@/components/top-bar";
 import { Dock } from "@/components/dock";
+import { AppMain } from "@/components/app-main";
 import { normalizeTheme, themeVars } from "@/lib/ui/theme";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
@@ -25,7 +26,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         unread={unread}
         pendingApprovals={pendingApprovals}
       />
-      <main className="mx-auto w-full max-w-[1400px] px-4 pb-32 pt-6 sm:px-6">{children}</main>
+      <AppMain apps={apps}>{children}</AppMain>
       <Dock apps={apps} />
     </div>
   );

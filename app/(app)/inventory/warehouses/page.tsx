@@ -1,3 +1,4 @@
+import Link from "@/components/plink";
 import { requireModule } from "@/lib/core/context";
 import { warehouseLimit } from "@/lib/apps/stock";
 import { ActionForm, SubmitButton } from "@/components/action-form";
@@ -30,7 +31,7 @@ export default async function Warehouses() {
             const st = stats(w.id);
             return (
               <Card key={w.id} className={w.active ? "" : "opacity-60"}
-                title={<span className="flex items-center gap-2"><span className="rounded-md bg-[var(--ork-purple)] px-2 py-0.5 font-mono text-[11px] text-white">{w.code}</span>{w.name}{!w.active && <Badge>Archivado</Badge>}</span>}>
+                title={<span className="flex w-full items-center gap-2"><span className="rounded-md bg-[var(--ork-purple)] px-2 py-0.5 font-mono text-[11px] text-white">{w.code}</span><Link href={`/inventory?wh=${w.id}`} className="hover:underline">{w.name}</Link>{!w.active && <Badge>Archivado</Badge>}{w.active && <Link href={`/inventory?wh=${w.id}`} className={`${btn.small} ml-auto normal-case tracking-normal`}>Ver existencias →</Link>}</span>}>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div><p className="text-xs text-stone-500">Referencias con stock</p><p className="text-lg font-semibold tabular-nums">{st.refs}</p></div>
                   <div><p className="text-xs text-stone-500">Unidades</p><p className="text-lg font-semibold tabular-nums">{num(st.units)}</p></div>

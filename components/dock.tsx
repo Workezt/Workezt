@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AppIcon } from "./app-icons";
-import { WorkeztMark } from "./workezt-logo";
 import { useSavedAppOrder } from "./app-grid";
 import { currentApp, type LauncherApp } from "@/lib/launcher";
 
@@ -32,7 +31,10 @@ export function Dock({ apps }: { apps: LauncherApp[] }) {
       <div className="wz-dock-scroll">
         <div className="wz-dock-inner">
           <Link href="/" className={`wz-dock-item ${path === "/" ? "current" : ""}`} aria-label="Inicio" aria-current={path === "/" ? "page" : undefined}>
-            <span className="wz-dock-home"><WorkeztMark size={26} /></span>
+            <span className="wz-dock-home" style={{ background: "none", overflow: "hidden" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- ícono estático de la app */}
+              <img src="/brand/workezt-app-icon.png" alt="" width={46} height={46} style={{ width: "100%", height: "100%" }} />
+            </span>
             <span className="wz-dock-tip">Inicio</span>
           </Link>
           <span className="wz-dock-sep" aria-hidden="true" />

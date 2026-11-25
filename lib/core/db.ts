@@ -32,6 +32,8 @@ export const TENANT_MODELS = new Set([
   "Campaign", "CampaignDaily", "SellerDailyClose", "SellerReportEvent", "CalendarConfig", "SellerCalendarSetting", "CalendarHoliday",
   // Finanzas
   "FinRecurringCost", "FinExpense", "FinIncome", "FinBudget",
+  // Precios: paquetes, historial y calculadora
+  "ProductPackPrice", "ProductPriceChange", "PriceSimulation",
   // Sitio web
   "WebLead",
   // Flipper (cotizador de capacidades)

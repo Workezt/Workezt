@@ -633,3 +633,4 @@ html[data-mode="dark"] .fl-chip.on { background: color-mix(in srgb, var(--c) 22%
 html[data-mode="dark"] .fl-panelcap { background: color-mix(in srgb, var(--c) 6%, var(--dk-surface)); }
 html[data-mode="dark"] .fl-rq.st-done { background: var(--dk-surface-2); }
 html[data-mode="dark"] .fl-appbadge { border-color: var(--dk-bg); }
+

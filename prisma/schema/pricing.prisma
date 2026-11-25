@@ -1,0 +1,63 @@
+// ───────────────────────────── Precios: paquetes, historial y calculadora (traído de KLINIU) ─────────────────────────────
+
+/// Precio por paquete de un producto: "Caja x12" = 12 unidades por $90.000.
+model ProductPackPrice {
+  id             String   @id @default(cuid())
+  organizationId String
+  productId      String
+  label          String
+  qty            Int
+  totalPrice     Decimal  @db.Decimal(18, 2)
+  position       Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, productId])
+}
+
+/// Cada cambio del precio de venta de un producto: quién, cuándo, de cuánto a cuánto.
+model ProductPriceChange {
+  id             String   @id @default(cuid())
+  organizationId String
+  productId      String
+  oldPrice       Decimal  @db.Decimal(18, 2)
+  newPrice       Decimal  @db.Decimal(18, 2)
+  userId         String?
+  note           String?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, productId, createdAt])
+}
+
+/// Simulación de precio de venta: costo de los productos + envío + picking, con comisión,
+/// campaña y margen sobre el precio (cada vendedor guarda las suyas).
+model PriceSimulation {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  name           String   @default("Nueva simulación")
+  shipping       Decimal  @default(0) @db.Decimal(18, 2)
+  picking        Decimal  @default(0) @db.Decimal(18, 2)
+  commissionPct  Decimal  @default(2.5) @db.Decimal(5, 2)
+  campaignPct    Decimal  @default(10) @db.Decimal(5, 2)
+  marginPct      Decimal  @default(25) @db.Decimal(5, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  items PriceSimulationItem[]
+
+  @@index([organizationId, userId])
+}
+
+model PriceSimulationItem {
+  id           String  @id @default(cuid())
+  simulationId String
+  productId    String?
+  name         String
+  quantity     Int     @default(1)
+  unitCost     Decimal @default(0) @db.Decimal(18, 2)
+  position     Int     @default(0)
+
+  simulation PriceSimulation @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+
+  @@index([simulationId])
+}

@@ -18,7 +18,7 @@
     "db:push:supabase": "node --env-file=.env.supabase node_modules/prisma/build/index.js db push",
     "db:rls:supabase": "tsx --env-file=.env.supabase scripts/supabase-rls.ts",
     "postinstall": "prisma generate",
-    "test:flows": "tsx scripts/test-phase1.ts && tsx scripts/test-phase2.ts && tsx scripts/test-phase3.ts && tsx scripts/test-warehouses.ts && tsx scripts/test-inventory-audit.ts && tsx scripts/test-campaigns.ts && tsx scripts/test-finance.ts && tsx scripts/test-website.ts && tsx scripts/test-flipper.ts",
+    "test:flows": "tsx scripts/test-phase1.ts && tsx scripts/test-phase2.ts && tsx scripts/test-phase3.ts && tsx scripts/test-warehouses.ts && tsx scripts/test-inventory-audit.ts && tsx scripts/test-campaigns.ts && tsx scripts/test-finance.ts && tsx scripts/test-website.ts && tsx scripts/test-flipper.ts && tsx scripts/test-pricing.ts && tsx scripts/test-combos.ts",
     "check:seed": "tsx scripts/check-seed.ts",
     "test:crawl": "DB_POOL_MAX=1 tsx scripts/crawl.ts",
     "test:api": "tsx scripts/test-api.ts",
@@ -30,7 +30,10 @@
     "import:odoo:salespeople": "tsx --env-file=.env --env-file=.env.odoo scripts/odoo/salespeople.ts",
     "import:odoo:salespeople:supabase": "tsx --env-file=.env.supabase --env-file=.env.odoo scripts/odoo/salespeople.ts",
     "demo:org": "tsx --env-file=.env scripts/demo-org.ts",
-    "demo:org:supabase": "tsx --env-file=.env.supabase scripts/demo-org.ts"
+    "demo:org:supabase": "tsx --env-file=.env.supabase scripts/demo-org.ts",
+    "dev:workezt": "set -a && . ./.env.workezt && set +a && next dev",
+    "db:push:workezt": "node --env-file=.env.workezt node_modules/prisma/build/index.js db push",
+    "db:rls:workezt": "tsx --env-file=.env.workezt scripts/supabase-rls.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.1",

@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef } from "react";
-import { AppIcon } from "./app-icons";
+import { AppIcon, FAMILIES, familyOf } from "./app-icons";
 import { ThemeToggle } from "./theme-toggle";
+import { AppSections } from "./app-sections";
 import { WorkeztLogo, WorkeztMark } from "./workezt-logo";
 import { currentApp, type LauncherApp } from "@/lib/launcher";
 import { switchOrganization } from "@/app/(app)/shell-actions";
@@ -43,27 +44,13 @@ export function TopBar({ apps, org, memberships, user, unread, pendingApprovals 
             <WorkeztLogo size={22} byOrk />
           </Link>
         ) : (
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <Link href="/" aria-label="Workezt · inicio" className="hidden shrink-0 sm:block"><WorkeztMark size={18} /></Link>
             <span className="hidden text-stone-300 sm:inline">/</span>
             <Link href={app.href} className="flex shrink-0 items-center gap-2">
               <AppIcon name={app.icon} size={26} />
               <span className="font-display text-[17px] font-semibold text-[var(--ork-ink)]">{app.name}</span>
             </Link>
-            {app.nav.length > 0 && (
-              <nav className="ml-3 hidden items-center gap-0.5 overflow-x-auto [scrollbar-width:none] md:flex">
-                {app.nav.map((n) => {
-                  // Activo = el ítem cuya ruta es el prefijo más largo de la ruta actual
-                  const best = app.nav.filter((x) => path === x.href || path.startsWith(`${x.href}/`)).sort((a, b) => b.href.length - a.href.length)[0];
-                  const active = best?.href === n.href;
-                  return (
-                    <Link key={n.href} href={n.href} className={`whitespace-nowrap rounded-full px-3 py-1.5 text-sm ${active ? "bg-[var(--ork-violet)]/10 font-medium text-[var(--ork-purple)]" : "text-stone-600 hover:bg-black/5"}`}>
-                      {n.label}
-                    </Link>
-                  );
-                })}
-              </nav>
-            )}
           </div>
         )}
 
@@ -123,11 +110,7 @@ export function TopBar({ apps, org, memberships, user, unread, pendingApprovals 
           </details>
         </div>
       </div>
-      {app && app.nav.length > 0 && (
-        <nav className="flex gap-1 overflow-x-auto border-t border-[var(--ork-rule)] px-4 py-1.5 md:hidden">
-          {app.nav.map((n) => <Link key={n.href} href={n.href} className="whitespace-nowrap rounded-md px-2.5 py-1 text-sm text-stone-700 hover:bg-black/5">{n.label}</Link>)}
-        </nav>
-      )}
+      {!home && app && app.nav.length > 0 && <AppSections items={app.nav} tone={FAMILIES[familyOf(app.icon)]} />}
     </header>
   );
 }

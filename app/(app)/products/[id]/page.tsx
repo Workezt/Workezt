@@ -10,6 +10,10 @@ import { RULE_ACTION } from "@/lib/ui/stock-labels";
 import { ProductForm } from "../product-form";
 import { toggleArchive } from "../actions";
 import { nowMs } from "@/lib/ui/clock";
+import { packPrices, priceHistory } from "@/lib/apps/pricing";
+import { PricesCard } from "./prices-card";
+import { comboDetail } from "@/lib/apps/combos";
+import { ComboCard } from "./combo-card";
 
 const n = (v: unknown) => Number(v ?? 0);
 const YEAR = 365 * 86400000;
@@ -31,6 +35,11 @@ export default async function ProductDetail({ params }: PageProps<"/products/[id
     ctx.hasModule("inventory") ? ctx.db.reorderRule.findMany({ where: { productId: id } }) : [],
     ctx.db.stockQuant.findMany({ where: { productId: id }, include: { location: true } }),
     ctx.db.warehouse.findMany({ orderBy: { position: "asc" } }),
+  ]);
+  const [packs, history, combo, goods] = await Promise.all([
+    packPrices(ctx, id), priceHistory(ctx, id),
+    p.kind === "COMBO" ? comboDetail(ctx, id) : null,
+    p.kind === "COMBO" && ctx.can("products.write") ? ctx.db.product.findMany({ where: { active: true, kind: "GOODS", id: { not: id } }, select: { sku: true, name: true }, orderBy: { name: "asc" } }) : [],
   ]);
   const idx = order.findIndex((o) => o.id === id);
   const sold = soLines.reduce((s, l) => s + n(l.quantity), 0), bought = poLines.reduce((s, l) => s + n(l.quantity), 0);
@@ -87,6 +96,8 @@ export default async function ProductDetail({ params }: PageProps<"/products/[id
           <ProductForm key={String(p.price) + (ctx.restricted("deny:costs") ? "" : String(p.cost)) + p.name} hideCost={ctx.restricted("deny:costs")} product={ctx.restricted("deny:costs") ? { ...p, cost: 0 } : p} defs={defs} suppliers={suppliers} categories={cats.map((c) => c.category!)} canWrite={ctx.can("products.write")}
             salesTab={salesTab} purchaseTab={purchaseTab} inventoryTab={inventoryTab} />
         </div>
+        {combo && <ComboCard d={combo} options={goods.map((g) => `[${g.sku}] ${g.name}`)} canWrite={ctx.can("products.write")} showCost={!ctx.restricted("deny:costs")} />}
+        {p.canBeSold && <PricesCard productId={p.id} unit={p.unit} price={p.price} packs={packs} history={history} canWrite={ctx.can("products.write")} />}
         <Chatter ctx={ctx} entityType="product" entityId={p.id} canWrite={ctx.can("products.write")} />
       </div>
     </>
