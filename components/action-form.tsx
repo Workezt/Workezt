@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, type ReactNode } from "react";
+import { useActionState, useEffect, useRef, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 
 export type ActionResult = { error?: string; errors?: Record<string, string>; ok?: string } | undefined;
@@ -11,11 +11,19 @@ export function ActionForm({ action, children, className }: {
   children: ReactNode;
   className?: string;
 }) {
+  const errorMessage = useRef<HTMLDivElement>(null);
   const [state, formAction] = useActionState(action, undefined);
+
+  useEffect(() => {
+    if (state?.error) errorMessage.current?.focus();
+  }, [state]);
+
   return (
-    <form action={formAction} className={className}>
+    <form action={formAction} className={className} onReset={(event) => {
+      if (state?.error) event.preventDefault();
+    }}>
       {state?.error && (
-        <div role="alert" className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <div ref={errorMessage} role="alert" tabIndex={-1} className="mb-4 scroll-mt-36 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
           {state.error}
           {state.errors && (
             <ul className="mt-1 list-inside list-disc text-xs">

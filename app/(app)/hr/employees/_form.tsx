@@ -4,6 +4,8 @@ import { CONTRACT_TYPE, EMPLOYEE_STATUS, SALARY_PERIOD, opts, optsT } from "@/li
 import { saveEmployee } from "../actions";
 import { isoDay, Select } from "../_ui";
 
+const sectionTitle = "pr-3 text-sm font-semibold text-[var(--ork-ink)]";
+
 type Emp = {
   id: string; name: string; email: string | null; documentNumber: string | null; phone: string | null; position: string | null; departmentId: string | null;
   managerId: string | null; contractType: string; status: string; site: string | null; hireDate: Date | null; terminationDate: Date | null;
@@ -19,18 +21,20 @@ export function EmployeeForm({ employee, departments, managers, users, canSalary
   return (
     <ActionForm action={saveEmployee} className="space-y-5">
       {e && <input type="hidden" name="id" value={e.id} />}
-      <fieldset className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <fieldset className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <legend className={sectionTitle}>Datos del colaborador</legend>
         <Field label="Nombre completo *"><input name="name" required defaultValue={e?.name} className={input} /></Field>
         <Field label="Documento (cédula)"><input name="documentNumber" defaultValue={e?.documentNumber ?? ""} className={input} /></Field>
         <Field label="Correo"><input type="email" name="email" defaultValue={e?.email ?? ""} className={input} /></Field>
-        <Field label="Teléfono"><input name="phone" defaultValue={e?.phone ?? ""} className={input} /></Field>
+        <Field label="Teléfono"><input name="phone" type="tel" autoComplete="tel" defaultValue={e?.phone ?? ""} className={input} /></Field>
         <Field label="Cargo *"><input name="position" required defaultValue={e?.position ?? ""} className={input} /></Field>
         <Field label="Departamento"><Select name="departmentId" defaultValue={e?.departmentId} empty="—" options={departments.map((d) => ({ value: d.id, label: d.name }))} /></Field>
         <Field label="Jefe inmediato"><Select name="managerId" defaultValue={e?.managerId} empty="— Sin jefe (cabeza del organigrama)" options={managers.filter((m) => m.id !== e?.id).map((m) => ({ value: m.id, label: m.name }))} /></Field>
         <Field label="Sede"><input name="site" defaultValue={e?.site ?? ""} className={input} /></Field>
         <Field label="Estado"><Select name="status" defaultValue={e?.status ?? "ACTIVE"} options={optsT(EMPLOYEE_STATUS)} /></Field>
       </fieldset>
-      <fieldset className="grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2 lg:grid-cols-3">
+      <fieldset className="grid min-w-0 gap-3 border-t border-[var(--ork-rule)] pt-4 sm:grid-cols-2 lg:grid-cols-3">
+        <legend className={sectionTitle}>Contrato y remuneración</legend>
         <Field label="Tipo de contrato"><Select name="contractType" defaultValue={e?.contractType ?? "INDEFINITE"} options={opts(CONTRACT_TYPE)} /></Field>
         <Field label="Fecha de ingreso *"><input type="date" name="hireDate" required defaultValue={isoDay(e?.hireDate)} className={input} /></Field>
         <Field label="Fecha de retiro"><input type="date" name="terminationDate" defaultValue={isoDay(e?.terminationDate)} className={input} /></Field>
@@ -38,11 +42,17 @@ export function EmployeeForm({ employee, departments, managers, users, canSalary
           <Field label="Salario base"><input name="salaryAmount" inputMode="numeric" defaultValue={e?.salaryAmount != null ? String(Number(e.salaryAmount)) : ""} className={input} /></Field>
           <Field label="Periodicidad"><Select name="salaryPeriod" defaultValue={e?.salaryPeriod ?? "MONTHLY"} options={opts(SALARY_PERIOD)} /></Field>
         </>}
-        <Field label="EPS"><input name="eps" defaultValue={e?.eps ?? ""} className={input} /></Field>
-        <Field label="Fondo de pensiones (AFP)"><input name="afp" defaultValue={e?.afp ?? ""} className={input} /></Field>
-        <Field label="ARL"><input name="arl" defaultValue={e?.arl ?? ""} className={input} /></Field>
       </fieldset>
-      <fieldset className="grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2">
+      <details className="rounded-lg border border-[var(--ork-rule)] p-4">
+        <summary className="cursor-pointer text-sm font-semibold">Seguridad social</summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <Field label="EPS"><input name="eps" defaultValue={e?.eps ?? ""} className={input} /></Field>
+          <Field label="Fondo de pensiones (AFP)"><input name="afp" defaultValue={e?.afp ?? ""} className={input} /></Field>
+          <Field label="ARL"><input name="arl" defaultValue={e?.arl ?? ""} className={input} /></Field>
+        </div>
+      </details>
+      <fieldset className="grid min-w-0 gap-3 border-t border-[var(--ork-rule)] pt-4 sm:grid-cols-2">
+        <legend className={sectionTitle}>Acceso al portal</legend>
         <Field label="Usuario de Workezt vinculado" hint="Da acceso al portal del colaborador con su propio usuario.">
           <Select name="userId" defaultValue={e?.userId} empty="— Sin usuario" options={users.map((u) => ({ value: u.id, label: `${u.name} · ${u.email}` }))} />
         </Field>
