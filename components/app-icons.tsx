@@ -11,6 +11,7 @@ const C = {
 };
 /** Superposición: la intersección de dos formas se oscurece, como tinta. */
 const mx: CSSProperties = { mixBlendMode: "multiply" };
+const wrenchPath = "M44 12.5c-6.6 0-12 5.4-12 12 0 1.7.3 3.3 1 4.8L14.8 47.5a4.6 4.6 0 0 0 6.5 6.5l18.2-18.2c1.5.7 3.1 1 4.8 1 6.6 0 12-5.4 12-12 0-.6 0-1.2-.1-1.8l-7.1 5.8-5.8-1.6-1.6-5.8 5.8-8.4c-1.1-.3-2.3-.5-3.5-.5Z";
 
 const ICONS: Record<string, ReactNode> = {
   dashboard: (<>
@@ -84,8 +85,8 @@ const ICONS: Record<string, ReactNode> = {
   </>),
   maintenance: (<>
     <circle cx="26" cy="38" r="20" fill={C.lav} />
-    <path d="M44 6a14 14 0 0 0-13 19L8 48a6 6 0 0 0 8 8l23-23A14 14 0 0 0 58 20l-8 8-8-2-2-8 8-8a14 14 0 0 0-4-4z" fill={C.deep} style={mx} />
-    <circle cx="12" cy="52" r="3" fill={C.amber} />
+    <path d={wrenchPath} fill={C.deep} style={mx} />
+    <circle cx="18" cy="51" r="2.3" fill={C.amber} />
     <rect x="40" y="42" width="18" height="16" rx="4" fill={C.pink} style={mx} />
   </>),
   logistics: (<>
@@ -196,8 +197,8 @@ const ICONS: Record<string, ReactNode> = {
   // Íconos adicionales para objetos personalizados de Studio
   wrench: (<>
     <circle cx="20" cy="20" r="15" fill={C.amber} />
-    <path d="M44 8a12 12 0 0 0-11 16L8 49a5 5 0 0 0 7 7l25-25a12 12 0 0 0 16-11l-7 5-6-2-2-6z" fill={C.violet} style={mx} />
-    <circle cx="12" cy="52" r="3" fill={C.white} />
+    <path d={wrenchPath} fill={C.violet} style={mx} />
+    <circle cx="18" cy="51" r="2.3" fill={C.white} />
   </>),
   clipboard: (<>
     <rect x="10" y="8" width="44" height="52" rx="7" fill={C.lav} />
@@ -271,6 +272,7 @@ export const familyOf = (name: string): Family => FAMILY_OF[name] ?? "org";
 
 const W = "#fff";
 const S = { fill: W, fillOpacity: 0.72 } as const;
+const wrenchGlyph = () => <path d={wrenchPath} fill={W} transform="translate(2 0) scale(.92)" />;
 /** Glifos blancos (viewBox 64; zona útil 14–50). `c` = tono oscuro de la familia para detalles calados. */
 const GLYPHS: Record<string, (c: string) => ReactNode> = {
   inventory: () => (<>
@@ -286,9 +288,7 @@ const GLYPHS: Record<string, (c: string) => ReactNode> = {
     <path d="M13 50V30l11 7v-7l11 7v-7l6 4V14h9v36z" fill={W} />
     <rect x="18" y="41" width="5" height="4" rx="1" fill={c} /><rect x="27" y="41" width="5" height="4" rx="1" fill={c} /><rect x="36" y="41" width="5" height="4" rx="1" fill={c} />
   </>),
-  maintenance: () => (<>
-    <path d="M45 13a11 11 0 0 0-10.5 14.3L14.6 47.2a4.4 4.4 0 0 0 6.2 6.2l19.9-19.9A11 11 0 0 0 52 20.4l-6.3 4.5-5.4-1.3-1.3-5.4 4.5-6.3z" fill={W} />
-  </>),
+  maintenance: wrenchGlyph,
   logistics: (c) => (<>
     <rect x="11" y="18" width="27" height="22" rx="3" fill={W} />
     <path d="M38 25h8l8 9v6H38z" {...S} />
@@ -305,7 +305,8 @@ const GLYPHS: Record<string, (c: string) => ReactNode> = {
   </>),
   website: (c) => (<>
     <rect x="11" y="14" width="42" height="34" rx="5" fill={W} />
-    <path d="M11 19a5 5 0 0 1 5-5h32a5 5 0 0 1 5 5v3H11z" {...S} />
+    <path d="M11 19a5 5 0 0 1 5-5h32a5 5 0 0 1 5 5v4H11z" fill={c} opacity=".24" />
+    <path d="M16 18.5h.1m4.4 0h.1m4.4 0h.1" stroke={c} strokeWidth="2" strokeLinecap="round" />
     <rect x="17" y="28" width="18" height="3.5" rx="1.75" fill={c} opacity=".5" />
     <rect x="17" y="35" width="12" height="3.5" rx="1.75" fill={c} opacity=".5" />
     <rect x="35" y="33" width="12" height="8" rx="4" fill={c} />
@@ -392,7 +393,7 @@ const GLYPHS: Record<string, (c: string) => ReactNode> = {
     {[18, 32, 46].map((x) => <rect key={x} x={x - 3.5} y="22" width="7" height="2.6" rx="1.3" fill={c} opacity=".55" />)}
   </>),
   approvals: (c) => (<>
-    <path d="M32 11l5 3.6 6.1-.2 1.9 5.8 5 3.6-1.9 5.8 1.9 5.8-5 3.6-1.9 5.8-6.1-.2L32 53l-5-3.6-6.1.2-1.9-5.8-5-3.6 1.9-5.8-1.9-5.8 5-3.6 1.9-5.8 6.1.2z" fill={W} />
+    <path d="M32 11l5.5 4 6.8.1 2.3 6.3 5.4 3.8L50 32l2 6.8-5.4 3.8-2.3 6.3-6.8.1-5.5 4-5.5-4-6.8-.1-2.3-6.3-5.4-3.8L14 32l-2-6.8 5.4-3.8 2.3-6.3 6.8-.1z" fill={W} />
     <path d="M24.5 32l5 5 10-10" fill="none" stroke={c} strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
   </>),
   hr: () => (<>
@@ -425,9 +426,7 @@ const GLYPHS: Record<string, (c: string) => ReactNode> = {
     <circle cx="32" cy="32" r="18" fill="none" stroke={W} strokeWidth="3.5" />
     <path d="M14 32h36M32 14c6 5 6 31 0 36M32 14c-6 5-6 31 0 36" fill="none" stroke={W} strokeOpacity=".75" strokeWidth="3" />
   </>),
-  wrench: () => (<>
-    <path d="M45 13a11 11 0 0 0-10.5 14.3L14.6 47.2a4.4 4.4 0 0 0 6.2 6.2l19.9-19.9A11 11 0 0 0 52 20.4l-6.3 4.5-5.4-1.3-1.3-5.4 4.5-6.3z" fill={W} />
-  </>),
+  wrench: wrenchGlyph,
   truck: (c) => (<>
     <rect x="11" y="18" width="27" height="22" rx="3" fill={W} />
     <path d="M38 25h8l8 9v6H38z" {...S} />
