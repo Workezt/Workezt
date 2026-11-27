@@ -1,39 +1,19 @@
 "use client";
 
 import { useState, useSyncExternalStore, type ReactNode } from "react";
-import { FAMILIES, type Family } from "@/components/app-icons";
 
-/** Orden de las familias al agrupar por color. */
-const FAMILY_ORDER: Family[] = ["intel", "commercial", "admin", "industry", "org"];
-type Mode = "default" | "color";
-const MODE_KEY = "wz.launcher.order";
 const POS_KEY = "wz.launcher.positions";
 
 /*
- * Preferencias del lanzador por navegador (modo y orden propio).
+ * Preferencias del lanzador por navegador (orden propio).
  * `memory` cubre el caso sin localStorage (modo privado, bloqueado): dura mientras la pestaña esté abierta.
  */
-const memory: { mode?: Mode; positions?: string | null } = {};
+const memory: { positions?: string | null } = {};
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach((l) => l());
 function subscribe(l: () => void) {
   listeners.add(l);
   return () => listeners.delete(l);
-}
-function readMode(): Mode {
-  if (memory.mode) return memory.mode;
-  try {
-    return localStorage.getItem(MODE_KEY) === "color" ? "color" : "default";
-  } catch {
-    return "default";
-  }
-}
-function setMode(m: Mode) {
-  memory.mode = m;
-  try {
-    localStorage.setItem(MODE_KEY, m);
-  } catch {}
-  notify();
 }
 /** Texto crudo (estable entre lecturas) para useSyncExternalStore. */
 function readPositionsRaw(): string {
@@ -61,10 +41,10 @@ function parse(raw: string): string[] {
   }
 }
 
-export type GridItem = { key: string; family: Family; tile: ReactNode };
+export type GridItem = { key: string; tile: ReactNode };
 
 /** Aplica el orden guardado; las apps nuevas (no guardadas) van al final en su orden por defecto. */
-function applyOrder(items: GridItem[], saved: string[]) {
+function applyOrder<T extends { key: string }>(items: T[], saved: string[]) {
   const pos = new Map(saved.map((k, i) => [k, i]));
   return items
     .map((it, i) => ({ it, i }))
@@ -72,16 +52,14 @@ function applyOrder(items: GridItem[], saved: string[]) {
     .map(({ it }) => it);
 }
 
-const pill = (active: boolean) =>
-  `rounded-full px-3.5 py-1 font-medium transition ${active ? "bg-[var(--ork-ink)] text-white" : "text-stone-600 hover:text-[var(--ork-ink)]"}`;
 const arrow =
   "grid h-7 w-7 place-items-center rounded-full border border-stone-300 bg-white text-base leading-none text-stone-700 shadow-sm hover:border-[var(--ork-violet)] hover:text-[var(--ork-violet)] disabled:opacity-30";
 
-/** Cuadrícula del lanzador: orden propio (editable arrastrando) o agrupado por color. */
-export function AppGrid({ items }: { items: GridItem[] }) {
-  const mode = useSyncExternalStore(subscribe, readMode, () => "default" as Mode);
+/** Cuadrícula del lanzador: orden propio editable arrastrando. */
+export function AppGrid({ items, allKeys }: { items: GridItem[]; allKeys: string[] }) {
   const raw = useSyncExternalStore(subscribe, readPositionsRaw, () => "");
-  const ordered = applyOrder(items, parse(raw));
+  const saved = parse(raw);
+  const ordered = applyOrder(items, saved);
 
   const [editing, setEditing] = useState(false);
   /** Arrastre en curso: app, punto de inicio y desplazamiento actual del puntero. */
@@ -95,7 +73,19 @@ export function AppGrid({ items }: { items: GridItem[] }) {
     const next = [...keys];
     next.splice(from, 1);
     next.splice(to, 0, key);
-    setPositions(next);
+    const sectionKeys = new Set(keys);
+    const orderedKeys = applyOrder(allKeys.map((key) => ({ key })), saved).map(({ key }) => key);
+    const visibleKeys = new Set(orderedKeys);
+    let index = 0;
+    setPositions([
+      ...orderedKeys.map((appKey) => sectionKeys.has(appKey) ? next[index++] : appKey),
+      ...saved.filter((appKey) => !visibleKeys.has(appKey)),
+    ]);
+  };
+
+  const resetOrder = () => {
+    const remaining = saved.filter((key) => !keys.includes(key));
+    setPositions(remaining.length ? remaining : null);
   };
 
   /** App bajo el puntero, ignorando la que se está arrastrando. */
@@ -156,12 +146,11 @@ export function AppGrid({ items }: { items: GridItem[] }) {
 
   return (
     <>
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-2xl font-bold text-[var(--ork-ink)] sm:text-3xl">Aplicaciones</h2>
-        {editing ? (
+      <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
+        {items.length > 0 && (editing ? (
           <div className="flex items-center gap-2 text-sm">
             <span className="hidden text-stone-500 sm:inline">Arrastra los íconos para ordenarlos</span>
-            <button type="button" onClick={() => setPositions(null)} className="rounded-full border border-[var(--ork-rule)] bg-white px-3.5 py-1 font-medium text-stone-600 hover:text-[var(--ork-ink)]">
+            <button type="button" onClick={resetOrder} className="rounded-full border border-[var(--ork-rule)] bg-white px-3.5 py-1 font-medium text-stone-600 hover:text-[var(--ork-ink)]">
               Restablecer
             </button>
             <button type="button" onClick={() => setEditing(false)} className="rounded-full bg-[var(--ork-violet)] px-4 py-1 font-medium text-white">
@@ -169,49 +158,21 @@ export function AppGrid({ items }: { items: GridItem[] }) {
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-2">
-            <div role="radiogroup" aria-label="Ordenar aplicaciones" className="flex rounded-full border border-[var(--ork-rule)] bg-white p-0.5 text-sm">
-              <button type="button" role="radio" aria-checked={mode === "default"} onClick={() => setMode("default")} className={pill(mode === "default")}>Mi orden</button>
-              <button type="button" role="radio" aria-checked={mode === "color"} onClick={() => setMode("color")} className={pill(mode === "color")}>Por color</button>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setMode("default");
-                setEditing(true);
-              }}
-              className="rounded-full border border-[var(--ork-rule)] bg-white px-3.5 py-1 text-sm font-medium text-stone-600 hover:text-[var(--ork-ink)]"
-            >
-              Editar
-            </button>
-          </div>
-        )}
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="rounded-full border border-[var(--ork-rule)] bg-white px-3.5 py-1 text-sm font-medium text-stone-600 hover:text-[var(--ork-ink)]"
+          >
+            Editar
+          </button>
+        ))}
       </div>
 
       <div className="mx-auto mt-6 max-w-[1000px]">
-        {mode === "default" || editing
-          ? grid(ordered)
-          : FAMILY_ORDER.map((f) => {
-              const list = ordered.filter((i) => i.family === f);
-              if (!list.length) return null;
-              return (
-                <section key={f} className="mb-10">
-                  <h3 className="mb-5 flex items-center gap-2 text-sm font-semibold text-stone-700">
-                    <span className="h-3 w-3 rounded-full" style={{ background: `linear-gradient(135deg, ${FAMILIES[f].light}, ${FAMILIES[f].dark})` }} />
-                    {FAMILIES[f].name}
-                    <span className="font-normal text-stone-400">· {list.length}</span>
-                  </h3>
-                  {grid(list)}
-                </section>
-              );
-            })}
+        {items.length === 0 ? (
+          <p className="text-sm text-stone-500">No hay aplicaciones disponibles en esta categoría.</p>
+        ) : grid(ordered)}
       </div>
     </>
   );
-}
-
-/** Orden propio guardado del lanzador (el mismo que usa el dock inferior). */
-export function useSavedAppOrder(): string[] {
-  const raw = useSyncExternalStore(subscribe, readPositionsRaw, () => "");
-  return parse(raw);
 }

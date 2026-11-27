@@ -2,7 +2,7 @@
  * Íconos de apps Workezt — formas planas superpuestas (multiply) sobre la paleta OR-K
  * con dos acentos cálidos para diferenciar apps. viewBox 64×64, sin dependencias.
  */
-import type { CSSProperties, ReactNode } from "react";
+import { useId, type CSSProperties, type ReactNode } from "react";
 
 const C = {
   // Colores como variables CSS: la paleta de íconos de cada organización los reemplaza (ver lib/ui/theme.ts)
@@ -252,7 +252,8 @@ const ICONS: Record<string, ReactNode> = {
 /* ───────── Workezt · propuesta A: color por área ─────────
    Recuadro 3D con el color de la familia y un glifo blanco por función. */
 export type Family = "industry" | "admin" | "commercial" | "intel" | "org";
-export const FAMILIES: Record<Family, { name: string; light: string; base: string; dark: string }> = {
+type AreaPalette = { light: string; base: string; dark: string };
+export const FAMILIES: Record<Family, AreaPalette & { name: string }> = {
   industry: { name: "Industria y logística", light: "#34cdc6", base: "#0f9ea3", dark: "#0a6a72" },
   admin: { name: "Administración y finanzas", light: "#4aa3ff", base: "#1a6fe6", dark: "#0b4bb3" },
   commercial: { name: "Comercial y creación", light: "#ffb457", base: "#f57c1f", dark: "#d4520c" },
@@ -450,10 +451,9 @@ const GLYPHS: Record<string, (c: string) => ReactNode> = {
   </>),
 };
 
-function AreaIcon({ name }: { name: string }) {
-  const fam = familyOf(name);
-  const f = FAMILIES[fam];
-  const g = `wz-${fam}`;
+function AreaIcon({ name, palette }: { name: string; palette?: AreaPalette }) {
+  const f = palette ?? FAMILIES[familyOf(name)];
+  const g = useId();
   return (
     <g className="ic-area">
       <defs>
@@ -483,10 +483,10 @@ export type IconPack = "area" | "duo" | "line" | "glyph";
  * Ícono de app. El paquete (Workezt 3D por área, duotono, lineal o sólido) lo define el tema de la organización
  * (atributo data-icons en el lienzo); `pack` lo fija para una vista previa.
  */
-export function AppIcon({ name, size = 56, pack }: { name: string; size?: number; pack?: IconPack }) {
+export function AppIcon({ name, size = 56, pack, palette }: { name: string; size?: number; pack?: IconPack; palette?: AreaPalette }) {
   return (
     <svg viewBox="0 0 64 64" width={size} height={size} aria-hidden="true" className="app-icon" data-pack={pack} style={{ isolation: "isolate" }}>
-      <AreaIcon name={name} />
+      <AreaIcon name={name} palette={palette} />
       <rect className="ic-bg" x="0" y="0" width="64" height="64" rx="16" />
       <g className="ic-shapes">{ICONS[name] ?? <rect x="10" y="10" width="44" height="44" rx="12" fill={C.violet} />}</g>
     </svg>

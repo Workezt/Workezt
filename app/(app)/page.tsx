@@ -1,8 +1,7 @@
 import Link from "@/components/plink";
 import { requireContext } from "@/lib/core/context";
-import { launcherApps } from "@/lib/launcher";
-import { AppIcon, familyOf } from "@/components/app-icons";
-import { AppGrid } from "@/components/app-grid";
+import { CATEGORIES } from "@/lib/launcher-categories";
+import { AppIcon } from "@/components/app-icons";
 import { visibleInsightWhere } from "@/lib/radar/visibility";
 import { fileUrl } from "@/lib/core/files";
 
@@ -11,7 +10,6 @@ export const metadata = { title: "Inicio" };
 /** Inicio: lanzador de apps. Cada organización ve solo sus apps activas y permitidas. */
 export default async function Home() {
   const ctx = await requireContext();
-  const apps = launcherApps(ctx, await ctx.db.customEntity.findMany({ where: { active: true }, orderBy: { createdAt: "asc" } }));
   const [alerts, approvals, tasks] = await Promise.all([
     ctx.hasModule("radar") && ctx.can("radar.read") ? ctx.db.insight.count({ where: { ...visibleInsightWhere(ctx), status: "OPEN", severity: { in: ["HIGH", "CRITICAL"] } } }) : 0,
     ctx.db.approval.count({ where: { status: "PENDING", ...(ctx.can("approvals.override") ? {} : { requiredRoleKey: ctx.role.key }) } }),
@@ -51,20 +49,23 @@ export default async function Home() {
         </div>
       )}
 
-      <AppGrid
-        items={apps.map((a) => ({
-          key: a.key,
-          family: familyOf(a.icon),
-          tile: (
-            <Link href={a.href} className="flex flex-col items-center gap-2.5 rounded-3xl text-center outline-none focus-visible:ring-2 focus-visible:ring-[var(--ork-violet)]">
-              <span className="app-tile grid h-[84px] w-[84px] place-items-center sm:h-[96px] sm:w-[96px]">
-                <AppIcon name={a.icon} size={76} />
+      <section className="mt-8" aria-labelledby="launcher-title">
+        <h2 id="launcher-title" className="font-display text-2xl font-bold text-[var(--ork-ink)] sm:text-3xl">Aplicaciones</h2>
+        <div className="mx-auto mt-6 grid max-w-[1000px] grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-6">
+          {CATEGORIES.map((area) => (
+            <Link
+              key={area.key}
+              href={`/aplicaciones/${area.key}`}
+              className="flex min-w-0 flex-col items-center gap-2.5 rounded-3xl p-2 text-center outline-none transition hover:bg-[var(--ork-violet)]/10 focus-visible:ring-2 focus-visible:ring-[var(--ork-violet)]"
+            >
+              <span className="app-tile grid h-[84px] w-[84px] place-items-center sm:h-[96px] sm:w-[96px]" aria-hidden="true">
+                <AppIcon name={area.icon} size={76} pack="area" palette={area.palette} />
               </span>
-              <span className="max-w-[124px] text-[13px] font-medium leading-tight text-stone-800">{a.name}</span>
+              <span className="text-sm font-semibold leading-tight text-[var(--ork-ink)]">{area.name}</span>
             </Link>
-          ),
-        }))}
-      />
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

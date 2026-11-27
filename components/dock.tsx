@@ -3,31 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AppIcon } from "./app-icons";
-import { useSavedAppOrder } from "./app-grid";
 import { currentApp, type LauncherApp } from "@/lib/launcher";
+import { CATEGORIES, categoryByApp } from "@/lib/launcher-categories";
 
-/** Cuántas apps caben en el dock (además de Inicio). */
-const MAX_APPS = 10;
-
-/**
- * Dock inferior estilo macOS (tomado de OR-K Flipper): Inicio + apps del lanzador
- * en el mismo orden que el usuario dejó en la cuadrícula (máximo 10). Se agranda al pasar el mouse.
- */
+/** Accesos fijos al inicio y a las categorías del lanzador. */
 export function Dock({ apps }: { apps: LauncherApp[] }) {
   const path = usePathname();
-  const saved = useSavedAppOrder();
-  const active = path === "/" ? null : currentApp(apps, path);
-  const pos = new Map(saved.map((k, i) => [k, i]));
-  const ordered = apps
-    .map((a, i) => ({ a, i }))
-    .sort((x, y) => (pos.get(x.a.key) ?? saved.length + x.i) - (pos.get(y.a.key) ?? saved.length + y.i))
-    .map(({ a }) => a);
-  // Máximo 10 apps: las primeras del orden propio; si la app abierta no está entre ellas, se agrega al final
-  const shown = ordered.slice(0, MAX_APPS);
-  if (active && !shown.some((a) => a.key === active.key)) shown.push(active);
+  const app = currentApp(apps, path);
+  const appCategory = app ? (categoryByApp.get(app.key) ?? "administracion") : undefined;
 
   return (
-    <nav className="wz-dock print:hidden" aria-label="Aplicaciones">
+    <nav className="wz-dock print:hidden" aria-label="Categorías de aplicaciones">
       <div className="wz-dock-scroll">
         <div className="wz-dock-inner">
           <Link href="/" className={`wz-dock-item ${path === "/" ? "current" : ""}`} aria-label="Inicio" aria-current={path === "/" ? "page" : undefined}>
@@ -38,12 +24,13 @@ export function Dock({ apps }: { apps: LauncherApp[] }) {
             <span className="wz-dock-tip">Inicio</span>
           </Link>
           <span className="wz-dock-sep" aria-hidden="true" />
-          {shown.map((a) => {
-            const cur = active?.key === a.key;
+          {CATEGORIES.map((category) => {
+            const href = `/aplicaciones/${category.key}`;
+            const current = path === href ? "page" : appCategory === category.key ? "location" : undefined;
             return (
-              <Link key={a.key} href={a.href} className={`wz-dock-item ${cur ? "current" : ""}`} aria-label={a.name} aria-current={cur ? "page" : undefined}>
-                <AppIcon name={a.icon} size={46} />
-                <span className="wz-dock-tip">{a.name}</span>
+              <Link key={category.key} href={href} className={`wz-dock-item ${current ? "current" : ""}`} aria-label={category.name} aria-current={current}>
+                <AppIcon name={category.icon} size={46} pack="area" palette={category.palette} />
+                <span className="wz-dock-tip" aria-hidden="true">{category.name}</span>
               </Link>
             );
           })}
