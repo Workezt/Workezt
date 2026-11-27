@@ -38,7 +38,7 @@ export async function addNoteAction(_: ActionResult, form: FormData): Promise<Ac
 
 export async function decideApprovalAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   return safeAction(async () => {
-    const ctx = await actionContext();
+    const ctx = await actionContext("approvals.write");
     await decideApproval(ctx, String(form.get("approvalId")), form.get("decision") === "approve", String(form.get("comment") ?? "") || undefined);
     revalidatePath("/approvals");
     return { ok: "Decisión registrada" };

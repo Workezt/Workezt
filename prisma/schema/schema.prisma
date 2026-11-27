@@ -57,6 +57,8 @@ model Membership {
   organizationId String
   userId         String
   roleId         String
+  /// Lista personal de permisos. Null hereda los permisos del rol.
+  permissionsOverride Json?
   title          String?
   departmentId   String?
   status         String   @default("ACTIVE") // ACTIVE | INVITED | DISABLED

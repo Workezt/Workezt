@@ -5,8 +5,9 @@ import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/core/prisma";
 import { actionContext } from "@/lib/core/context";
 import { hashPassword } from "@/lib/core/auth";
-import { hasPermission, canGrantPermissions, isRestrictionKey } from "@/lib/core/permissions";
-import { buildCatalog, permissionsFromForm } from "@/lib/core/permission-catalog";
+import { hasPermission, canGrantPermissions, isRestrictionKey, membershipPermissions } from "@/lib/core/permissions";
+import { buildCatalog, buildPersonalCatalog, permissionsFromForm, personalPermissionsFromForm } from "@/lib/core/permission-catalog";
+import { Prisma } from "@/lib/generated/prisma/client";
 import { BASE_ROLES } from "@/lib/templates/industries";
 import { audit } from "@/lib/core/notify";
 import { generateApiKey } from "@/lib/core/api-auth";
@@ -74,7 +75,7 @@ export async function updateMembership(form: FormData) {
   const m = await ctx.db.membership.findUniqueOrThrow({ where: { id: s(form, "id") }, include: { role: true } });
   if (m.userId === ctx.user.id) throw new Error("No puedes modificar tu propio acceso");
   if (m.role.key === "OWNER" && ctx.role.key !== "OWNER") throw new Error("Solo un propietario puede modificar a otro propietario");
-  if (!canGrantPermissions(ctx.permissions, m.role.permissions)) throw new Error("No puedes modificar un usuario con más acceso que el tuyo");
+  if (!canGrantPermissions(ctx.permissions, m.role.permissions) || !canGrantPermissions(ctx.permissions, membershipPermissions(m))) throw new Error("No puedes modificar un usuario con más acceso que el tuyo");
   const roleId = s(form, "roleId");
   const status = s(form, "status");
   if (status && !["ACTIVE", "DISABLED"].includes(status)) throw new Error("Estado de acceso inválido");
@@ -83,9 +84,62 @@ export async function updateMembership(form: FormData) {
     if (target.key === "OWNER" && ctx.role.key !== "OWNER") throw new Error("Solo un propietario puede asignar el rol Propietario");
     if (!canGrantPermissions(ctx.permissions, target.permissions)) throw new Error("No puedes asignar un rol con más acceso que el tuyo");
   }
-  await ctx.db.membership.update({ where: { id: m.id }, data: { ...(roleId ? { roleId } : {}), ...(status ? { status } : {}) } });
+  await ctx.db.membership.update({
+    where: {
+      id: m.id,
+      roleId: m.roleId,
+      role: { permissions: { equals: m.role.permissions } },
+      permissionsOverride: { equals: m.permissionsOverride ?? Prisma.DbNull },
+    },
+    data: { ...(roleId && roleId !== m.roleId ? { roleId, permissionsOverride: Prisma.DbNull } : {}), ...(status ? { status } : {}) },
+  });
   await audit(ctx, "MembershipUpdated", "membership", m.id, { roleId, status });
   revalidatePath("/settings/users");
+}
+
+export async function saveMemberPermissions(_: ActionResult, form: FormData): Promise<ActionResult> {
+  return safeAction(async () => {
+    const ctx = await actionContext("org.users.manage");
+    if (!ctx.can("org.roles.manage")) return { error: "Necesitas permiso para gestionar roles y permisos" };
+    const member = await ctx.db.membership.findUniqueOrThrow({ where: { id: s(form, "id") }, include: { role: true } });
+    if (member.userId === ctx.user.id || member.role.isSystem || member.role.key === "OWNER") return { error: "Este acceso no se puede personalizar" };
+    if (member.roleId !== s(form, "roleId")) return { error: "El perfil base cambió. Recarga la pantalla antes de guardar." };
+    const current = membershipPermissions(member);
+    if (!canGrantPermissions(ctx.permissions, current) || !canGrantPermissions(ctx.permissions, member.role.permissions)) {
+      return { error: "No puedes modificar este nivel de acceso" };
+    }
+
+    const reset = s(form, "mode") === "inherit";
+    let permissions = membershipPermissions({ ...member, permissionsOverride: null });
+    if (!reset) {
+      const customs = await ctx.db.customEntity.findMany({ select: { key: true, labelPlural: true, active: true } });
+      const catalog = buildPersonalCatalog(ctx.modules, customs.filter(({ active }) => active));
+      permissions = personalPermissionsFromForm(form, catalog, current, customs.map(({ key }) => key));
+    }
+    if (!canGrantPermissions(ctx.permissions, permissions)) return { error: "No puedes otorgar permisos que no tienes ni quitar tus restricciones de acceso" };
+
+    await ctx.db.$transaction([
+      ctx.db.membership.update({
+        where: {
+          id: member.id,
+          roleId: member.roleId,
+          role: { permissions: { equals: member.role.permissions } },
+          permissionsOverride: { equals: member.permissionsOverride ?? Prisma.DbNull },
+        },
+        data: { permissionsOverride: reset ? Prisma.DbNull : permissions },
+      }),
+      ctx.db.auditLog.create({ data: {
+        organizationId: ctx.orgId,
+        actorId: ctx.actorId,
+        action: reset ? "MemberPermissionsRestored" : "MemberPermissionsSaved",
+        entityType: "membership",
+        entityId: member.id,
+        changes: { before: current, after: permissions },
+      } }),
+    ]);
+    revalidatePath("/settings/users");
+    return { ok: reset ? "Permisos del perfil base restaurados" : "Permisos personales guardados" };
+  });
 }
 
 export async function updateMembershipResult(_: ActionResult, form: FormData): Promise<ActionResult> {
@@ -211,7 +265,7 @@ export async function resetMemberPassword(_: ActionResult, form: FormData): Prom
     const m = await ctx.db.membership.findUniqueOrThrow({ where: { id: s(form, "id") }, include: { role: true, user: true } });
     if (m.userId === ctx.user.id) return { error: "Cambia tu propia contraseña desde tu perfil" };
     if (m.role.key === "OWNER" && ctx.role.key !== "OWNER") return { error: "Solo un propietario puede hacerlo con otro propietario" };
-    if (!canGrantPermissions(ctx.permissions, m.role.permissions)) return { error: "No puedes restablecer el acceso de un usuario con más permisos que los tuyos" };
+    if (!canGrantPermissions(ctx.permissions, m.role.permissions) || !canGrantPermissions(ctx.permissions, membershipPermissions(m))) return { error: "No puedes restablecer el acceso de un usuario con más permisos que los tuyos" };
     const orgs = await prisma.membership.count({ where: { userId: m.userId } });
     if (orgs > 1 || m.user.isPlatformAdmin) return { error: "Este usuario también pertenece a otra organización: debe cambiar su contraseña él mismo" };
     const temp = randomBytes(18).toString("base64url");

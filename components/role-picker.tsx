@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { groupProfilesByPillar } from "@/lib/launcher-categories";
 import { Field, input } from "./ui-base";
 
-export function RolePicker({ roles }: { roles: { id: string; name: string; description: string | null; summary: string[] }[] }) {
+export function RolePicker({ roles }: { roles: { id: string; key: string; name: string; description: string | null; summary: string[] }[] }) {
   const [id, setId] = useState("");
   const selected = roles.find((role) => role.id === id);
   return (
@@ -11,7 +12,11 @@ export function RolePicker({ roles }: { roles: { id: string; name: string; descr
       <Field label="Perfil de acceso *">
         <select name="roleId" required value={id} onChange={(event) => setId(event.target.value)} className={input} aria-describedby="role-preview">
           <option value="" disabled>Selecciona el acceso que necesita</option>
-          {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+          {groupProfilesByPillar(roles).map((pillar) => (
+            <optgroup key={pillar.key} label={pillar.name}>
+              {pillar.profiles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+            </optgroup>
+          ))}
         </select>
       </Field>
       <div id="role-preview" aria-live="polite" className="rounded-xl border border-[var(--ork-rule)] bg-slate-50 p-3 text-sm">

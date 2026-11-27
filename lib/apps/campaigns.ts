@@ -1,6 +1,6 @@
 import type { ExecContext, OrgContext } from "@/lib/core/context";
 import { prisma } from "@/lib/core/prisma";
-import { hasPermission } from "@/lib/core/permissions";
+import { hasPermission, membershipPermissions } from "@/lib/core/permissions";
 import { emitEvent } from "@/lib/core/events";
 import { getUsdRates } from "./trm";
 import { dateToKey, isDateKey, keyToDate, localKey } from "./commercial-calendar";
@@ -31,7 +31,7 @@ export const canManageCampaign = (s: CampaignScope, sellerId: string) => !s.own 
 export async function campaignSellers(ctx: ExecContext, s: CampaignScope) {
   const ms = await ctx.db.membership.findMany({ where: { status: "ACTIVE" }, include: { user: { select: { id: true, name: true } }, role: { select: { permissions: true } } } });
   return ms
-    .filter((m) => hasPermission(m.role.permissions, "campaigns.write") && (!s.own || m.userId === s.userId))
+    .filter((m) => hasPermission(membershipPermissions(m), "campaigns.write") && (!s.own || m.userId === s.userId))
     .map((m) => ({ id: m.user.id, name: m.user.name }))
     .sort((a, b) => a.name.localeCompare(b.name, "es"));
 }

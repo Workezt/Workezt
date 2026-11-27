@@ -1,5 +1,5 @@
 import Link from "@/components/plink";
-import { requireContext } from "@/lib/core/context";
+import { requirePermission } from "@/lib/core/context";
 import { canDecide } from "@/lib/core/approvals";
 import { ENTITIES } from "@/lib/core/entities";
 import { orgPeople } from "@/lib/core/members";
@@ -11,7 +11,7 @@ import { decideApprovalAction } from "../entity-actions";
 export const metadata = { title: "Aprobaciones" };
 
 export default async function Approvals() {
-  const ctx = await requireContext();
+  const ctx = await requirePermission("approvals.read");
   const [pending, history, users, roles] = await Promise.all([
     ctx.db.approval.findMany({ where: { status: "PENDING" }, orderBy: { createdAt: "asc" } }),
     ctx.db.approval.findMany({ where: { status: { not: "PENDING" } }, orderBy: { decidedAt: "desc" }, take: 15 }),

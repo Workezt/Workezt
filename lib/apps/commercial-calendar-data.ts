@@ -1,3 +1,4 @@
+import { membershipPermissions } from "@/lib/core/permissions";
 // Calendario de actividad comercial — carga de datos (servidor). Reutiliza Campaign y CampaignDaily.
 import type { ExecContext } from "@/lib/core/context";
 import { prisma } from "@/lib/core/prisma";
@@ -25,11 +26,11 @@ export async function getCalendarConfig(ctx: ExecContext, s: CampaignScope) {
  */
 export async function listCalendarSellers(ctx: ExecContext, s: CampaignScope) {
   const [members, owners] = await Promise.all([
-    ctx.db.membership.findMany({ where: { status: "ACTIVE" }, select: { userId: true, role: { select: { permissions: true } } } }),
+    ctx.db.membership.findMany({ where: { status: "ACTIVE" }, select: { userId: true, permissionsOverride: true, role: { select: { permissions: true } } } }),
     ctx.db.campaign.findMany({ distinct: ["sellerId"], select: { sellerId: true } }),
   ]);
   const ids = new Set([
-    ...members.filter((m) => m.role.permissions.includes("scope:own:campaigns")).map((m) => m.userId),
+    ...members.filter((m) => membershipPermissions(m).includes("scope:own:campaigns")).map((m) => m.userId),
     ...owners.map((o) => o.sellerId),
   ]);
   if (s.own) for (const id of [...ids]) if (id !== s.userId) ids.delete(id);

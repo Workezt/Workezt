@@ -11,3 +11,25 @@ type Category = (typeof CATEGORIES)[number];
 export const categoryByApp = new Map<string, Category["key"]>(
   CATEGORIES.flatMap(({ key, apps }) => apps.map((app) => [app, key] as const)),
 );
+
+
+const rolePillars: Record<string, Category["key"]> = {
+  OWNER: "administracion",
+  ADMIN: "administracion",
+  EMPLOYEE: "administracion",
+  INVENTORY: "operaciones",
+  PRODUCTION: "operaciones",
+  SALES: "comercial",
+  MANAGEMENT: "gerencia",
+  VIEWER: "gerencia",
+  FINANCE: "finanzas",
+  QUALITY: "calidad",
+};
+
+export function groupProfilesByPillar<T extends { key: string }>(profiles: T[]) {
+  return CATEGORIES.map(({ key, name }) => ({
+    key,
+    name,
+    profiles: profiles.filter((profile) => (rolePillars[profile.key] ?? "administracion") === key),
+  }));
+}

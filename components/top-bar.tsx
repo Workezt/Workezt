@@ -66,12 +66,12 @@ export function TopBar({ apps, org, memberships, user, unread, pendingApprovals 
           {/* Acciones rápidas: mismo estilo lineal, agrupadas en una píldora */}
           <div className="flex items-center gap-0.5 rounded-full border border-[var(--ork-rule)] bg-white/70 p-1 shadow-sm">
             <ThemeToggle className={QUICK} />
-            <Link href="/approvals" title={pendingApprovals ? `Aprobaciones · ${pendingApprovals} pendiente(s)` : "Aprobaciones"} aria-label="Aprobaciones" className={QUICK}>
+            {apps.some(({ key }) => key === "approvals") && <Link href="/approvals" title={pendingApprovals ? `Aprobaciones · ${pendingApprovals} pendiente(s)` : "Aprobaciones"} aria-label="Aprobaciones" className={QUICK}>
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M12 3l7 3v5c0 4.6-3 8.2-7 10-4-1.8-7-5.4-7-10V6z" /><path d="m8.8 12 2.2 2.2 4.4-4.6" />
               </svg>
               {pendingApprovals > 0 && <span className={BADGE}>{pendingApprovals > 99 ? "99+" : pendingApprovals}</span>}
-            </Link>
+            </Link>}
             <Link href="/notifications" title={unread ? `Notificaciones · ${unread} sin leer` : "Notificaciones"} aria-label="Notificaciones" className={QUICK}>
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M6 9a6 6 0 1 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9" /><path d="M10 19a2 2 0 0 0 4 0" />

@@ -1,7 +1,7 @@
 import Link from "@/components/plink";
 import { requirePermission } from "@/lib/core/context";
-import { CORE_PERMISSIONS, RESTRICTIONS, SCOPES, hasPermission } from "@/lib/core/permissions";
-import { buildCatalog, levelOf, summarize, type AppGroup, type Level } from "@/lib/core/permission-catalog";
+import { buildCatalog, summarize, type AppGroup } from "@/lib/core/permission-catalog";
+import { PermissionFields } from "@/components/permission-fields";
 import { ActionForm, SubmitButton } from "@/components/action-form";
 import { btn, input, PageHeader } from "@/components/ui";
 import { deleteRole, saveRole } from "../actions";
@@ -10,23 +10,10 @@ import { BASE_ROLES } from "@/lib/templates/industries";
 export const metadata = { title: "Roles y permisos" };
 const BASE_KEYS = new Set(BASE_ROLES.map((r) => r.key));
 
-const LEVELS: { value: Level; label: string; tone: string }[] = [
-  { value: "none", label: "Sin acceso", tone: "peer-checked:bg-stone-600" },
-  { value: "read", label: "Solo lectura", tone: "peer-checked:bg-sky-700" },
-  { value: "write", label: "Edición", tone: "peer-checked:bg-[var(--ork-purple)]" },
-];
-
-/** Editor de un rol: niveles por área, permisos especiales, alcance y datos sensibles. */
-function RoleForm({ catalog, granted, role, scopes }: {
-  catalog: AppGroup[]; granted: string[]; scopes: (typeof SCOPES)[number][];
+function RoleForm({ catalog, granted, role }: {
+  catalog: AppGroup[]; granted: string[];
   role?: { id: string; name: string; description: string | null };
 }) {
-  const check = (key: string, label: string, hint?: string) => (
-    <label key={key} className="flex items-start gap-2 py-1 text-sm">
-      <input type="checkbox" name="permissions" value={key} defaultChecked={key.includes(":") ? granted.includes(key) : hasPermission(granted, key)} className="mt-0.5 accent-[var(--ork-violet)]" />
-      <span>{label}{hint && <span className="block text-xs text-stone-500">{hint}</span>}</span>
-    </label>
-  );
   return (
     <ActionForm action={saveRole} className="space-y-6">
       {role && <input type="hidden" name="id" value={role.id} />}
@@ -35,56 +22,7 @@ function RoleForm({ catalog, granted, role, scopes }: {
         <label className="text-sm"><span className="mb-1 block text-xs font-medium text-stone-600">Descripción</span><input name="description" defaultValue={role?.description ?? ""} placeholder="Para qué sirve este rol" className={input} /></label>
       </div>
 
-      <section>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-stone-600">Acceso por aplicación</h3>
-        <div className="overflow-hidden rounded-xl border border-stone-200">
-          {catalog.map((g) => (
-            <div key={g.key} className="border-b border-stone-100 last:border-0">
-              <div className="grid items-center gap-2 bg-stone-50 px-4 py-2 md:grid-cols-[1fr_auto]">
-                <p className="font-semibold text-[var(--ork-purple)]">{g.name}</p>
-              </div>
-              {g.areas.map((a) => {
-                const current = levelOf(granted, a.prefix);
-                return (
-                  <div key={a.prefix} className="grid items-center gap-2 px-4 py-2 md:grid-cols-[1fr_auto]">
-                    <p className="text-sm">{a.label}</p>
-                    <div role="radiogroup" aria-label={`${g.name}: ${a.label}`} className="flex overflow-hidden rounded-lg border border-stone-300 bg-white text-xs">
-                      {LEVELS.map((l) => (
-                        <label key={l.value} className="cursor-pointer">
-                          <input type="radio" name={`lvl:${a.prefix}`} value={l.value} defaultChecked={current === l.value} className="peer sr-only" />
-                          <span className={`block px-3 py-1.5 text-stone-700 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--ork-violet)] ${l.tone}`}>{l.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-              {g.extras.length > 0 && <div className="flex flex-wrap gap-x-6 px-4 pb-2">{g.extras.map((p) => check(p.key, p.label))}</div>}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <section className="rounded-xl border border-stone-200 p-4">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-stone-600">Alcance de registros</h3>
-          {scopes.length ? scopes.map((sc) => (
-            <label key={sc.key} className="flex items-start gap-2 py-1 text-sm">
-              <input type="checkbox" name="permissions" value={sc.key} defaultChecked={granted.includes(sc.key)} className="mt-0.5 accent-[var(--ork-violet)]" />
-              <span><b>{sc.label}:</b> solo los suyos<span className="block text-xs text-stone-500">{sc.hint}. Sin marcar, ve los de todo el equipo.</span></span>
-            </label>
-          )) : <p className="text-sm text-stone-500">Disponible cuando Ventas o Campañas están activas.</p>}
-        </section>
-        <section className="rounded-xl border border-stone-200 p-4">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-stone-600">Datos sensibles</h3>
-          {RESTRICTIONS.map((r) => check(r.key, r.label, r.hint))}
-        </section>
-        <section className="rounded-xl border border-stone-200 p-4">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-stone-600">Administración y plataforma</h3>
-          {CORE_PERMISSIONS.map((p) => check(p.key, p.label))}
-        </section>
-      </div>
-
+      <PermissionFields catalog={catalog} granted={granted} />
       <div className="flex flex-wrap items-center gap-3 border-t border-stone-100 pt-4">
         <SubmitButton className={btn.primary} pendingText="Guardando…">{role ? "Guardar rol" : "Crear rol"}</SubmitButton>
         <p className="text-xs text-stone-500">Nadie puede otorgar permisos que no tiene. Los cambios aplican en la siguiente acción del usuario.</p>
@@ -101,7 +39,6 @@ export default async function Roles({ searchParams }: PageProps<"/settings/roles
     ctx.db.customEntity.findMany({ where: { active: true }, select: { key: true, labelPlural: true } }),
   ]);
   const catalog = buildCatalog(ctx.modules, customs);
-  const scopes = SCOPES.filter((sc) => ctx.hasModule(sc.module));
   const open = typeof sp.edit === "string" ? sp.edit : "";
   const dup = typeof sp.dup === "string" ? roles.find((r) => r.id === sp.dup) : undefined;
   const creating = sp.new === "1" || !!dup;
@@ -135,7 +72,7 @@ export default async function Roles({ searchParams }: PageProps<"/settings/roles
               </div>
               {editing && !r.isSystem && (
                 <div id={`rol-${r.id}`} className="border-t border-stone-100 p-4">
-                  <RoleForm catalog={catalog} granted={r.permissions} role={r} scopes={scopes} />
+                  <RoleForm catalog={catalog} granted={r.permissions} role={r} />
                 </div>
               )}
               {r.isSystem && editing && <p className="border-t border-stone-100 p-4 text-sm text-stone-500">Acceso total. No editable.</p>}
@@ -146,7 +83,7 @@ export default async function Roles({ searchParams }: PageProps<"/settings/roles
         {creating && (
           <section id="nuevo" className="rounded-2xl border border-[var(--ork-violet)] bg-white p-4 shadow-sm">
             <p className="mb-4 font-semibold">{dup ? `Nuevo rol a partir de «${dup.name}»` : "Nuevo rol"}</p>
-            <RoleForm catalog={catalog} granted={dup && !dup.isSystem ? dup.permissions : dup?.isSystem ? ["*"] : []} scopes={scopes} />
+            <RoleForm catalog={catalog} granted={dup && !dup.isSystem ? dup.permissions : dup?.isSystem ? ["*"] : []} />
           </section>
         )}
       </div>

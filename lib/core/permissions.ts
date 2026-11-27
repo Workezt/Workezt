@@ -58,3 +58,13 @@ export function canGrantPermissions(actor: readonly string[], target: readonly s
   return target.every((p) => isRestrictionKey(p) || hasPermission(actor, p))
     && actor.filter(isRestrictionKey).every((p) => target.includes(p));
 }
+
+/** Permisos históricos de las herramientas compartidas. Un acceso personal puede limitarlos. */
+export const DEFAULT_SHARED_ACCESS = ["dashboard.read", "tasks.read", "tasks.write", "approvals.read", "approvals.write"];
+
+/** La membresía conserva su rol para los flujos aunque tenga permisos individuales. */
+export function membershipPermissions(member: { permissionsOverride: unknown; role: { permissions: string[] } }): string[] {
+  const override = member.permissionsOverride;
+  if (Array.isArray(override)) return override.filter((key): key is string => typeof key === "string");
+  return [...new Set([...member.role.permissions, ...DEFAULT_SHARED_ACCESS])];
+}

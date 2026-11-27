@@ -9,7 +9,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const ctx = await requireContext();
   const [unread, pendingApprovals] = await Promise.all([
     ctx.db.notification.count({ where: { userId: ctx.user.id, readAt: null } }),
-    ctx.db.approval.count({ where: { status: "PENDING", ...(ctx.can("approvals.override") ? {} : { requiredRoleKey: ctx.role.key }) } }),
+    ctx.can("approvals.read") ? ctx.db.approval.count({ where: { status: "PENDING", ...(ctx.can("approvals.override") ? {} : { requiredRoleKey: ctx.role.key }) } }) : 0,
   ]);
   // Apariencia de la organización: colores, fondo, tarjetas y paquete de íconos
   const theme = normalizeTheme(ctx.org.branding.theme, ctx.org.branding.primaryColor);

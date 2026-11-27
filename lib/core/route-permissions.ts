@@ -5,6 +5,9 @@ import type { OrgContext } from "./context";
  * Se evalúa en orden: la regla más específica primero.
  */
 const RULES: { prefix: string; module?: string; permission?: string }[] = [
+  { prefix: "/dashboard", permission: "dashboard.read" },
+  { prefix: "/tasks", permission: "tasks.read" },
+  { prefix: "/approvals", permission: "approvals.read" },
   { prefix: "/sales/quotes/new", module: "sales", permission: "sales.quotes.write" },
   { prefix: "/sales/orders/new", module: "sales", permission: "sales.quotes.write" },
   { prefix: "/sales/pricelists", module: "sales", permission: "sales.quotes.write" },

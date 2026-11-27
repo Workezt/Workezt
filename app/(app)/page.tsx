@@ -12,8 +12,8 @@ export default async function Home() {
   const ctx = await requireContext();
   const [alerts, approvals, tasks] = await Promise.all([
     ctx.hasModule("radar") && ctx.can("radar.read") ? ctx.db.insight.count({ where: { ...visibleInsightWhere(ctx), status: "OPEN", severity: { in: ["HIGH", "CRITICAL"] } } }) : 0,
-    ctx.db.approval.count({ where: { status: "PENDING", ...(ctx.can("approvals.override") ? {} : { requiredRoleKey: ctx.role.key }) } }),
-    ctx.db.task.count({ where: { assigneeId: ctx.user.id, status: "OPEN" } }),
+    ctx.can("approvals.read") ? ctx.db.approval.count({ where: { status: "PENDING", ...(ctx.can("approvals.override") ? {} : { requiredRoleKey: ctx.role.key }) } }) : 0,
+    ctx.can("tasks.read") ? ctx.db.task.count({ where: { assigneeId: ctx.user.id, status: "OPEN" } }) : 0,
   ]);
   const chips = [
     alerts > 0 && { href: "/radar", label: `${alerts} alertas importantes en Radar`, tone: "bg-[var(--ork-pink)] text-white" },

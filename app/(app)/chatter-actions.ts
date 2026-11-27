@@ -23,6 +23,7 @@ export async function scheduleActivity(_: ActionResult, form: FormData): Promise
   return safeAction(async () => {
     const def = getEntity(s(form, "entityType"));
     const ctx = await actionContext(def.readPermission, def.module);
+    if (!ctx.can("tasks.write")) return { error: "No tienes permiso para editar tareas" };
     if (!s(form, "title")) return { error: "Escribe el resumen de la actividad" };
     const id = s(form, "entityId");
     await requireActivityRecord(ctx, def, id);
@@ -43,6 +44,7 @@ export async function scheduleActivity(_: ActionResult, form: FormData): Promise
 export async function completeActivity(form: FormData) {
   const def = getEntity(s(form, "entityType"));
   const ctx = await actionContext(def.readPermission, def.module);
+  if (!ctx.can("tasks.write")) throw new Error("No tienes permiso para editar tareas");
   const id = s(form, "entityId");
   await requireActivityRecord(ctx, def, id);
   const t = await ctx.db.task.update({ where: { id: s(form, "taskId"), sourceType: def.type, sourceId: id }, data: { status: "DONE" } });

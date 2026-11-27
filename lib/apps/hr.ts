@@ -3,7 +3,7 @@ import type { ExecContext, OrgContext } from "@/lib/core/context";
 import { nextNumber } from "@/lib/core/db";
 import { emitEvent } from "@/lib/core/events";
 import { audit, notify } from "@/lib/core/notify";
-import { hasPermission } from "@/lib/core/permissions";
+import { hasPermission, membershipPermissions } from "@/lib/core/permissions";
 import { hashPassword } from "@/lib/core/auth";
 import { ValidationError } from "./crm";
 import { OVERTIME_TYPE, PERMIT_SUBTYPE, TIME_OFF_TYPE, INCAPACITY_TYPE } from "@/lib/ui/hr-labels";
@@ -62,8 +62,8 @@ export async function isManagerOf(ctx: ExecContext, employeeId: string) {
 
 /** Usuarios activos cuyo rol concede el permiso (para notificar a quien aprueba). */
 export async function usersWithPermission(ctx: ExecContext, permission: string) {
-  const ms = await ctx.db.membership.findMany({ where: { status: "ACTIVE" }, select: { userId: true, role: { select: { permissions: true } } } });
-  return ms.filter((m) => hasPermission(m.role.permissions, permission)).map((m) => m.userId);
+  const ms = await ctx.db.membership.findMany({ where: { status: "ACTIVE" }, select: { userId: true, permissionsOverride: true, role: { select: { permissions: true } } } });
+  return ms.filter((m) => hasPermission(membershipPermissions(m), permission)).map((m) => m.userId);
 }
 
 async function approversFor(ctx: ExecContext, employeeId: string) {

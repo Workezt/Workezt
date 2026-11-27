@@ -36,16 +36,13 @@ const MODULE_MATCH: Record<string, string[]> = {
 };
 
 export function launcherApps(ctx: OrgContext, customs: { key: string; labelPlural: string; icon: string }[] = []): LauncherApp[] {
-  const apps: LauncherApp[] = [
-    { key: "dashboard", name: "Tableros", icon: "dashboard", href: "/dashboard", match: ["/dashboard"], nav: [] },
-  ];
+  const apps: LauncherApp[] = [];
+  if (ctx.can("dashboard.read")) apps.push({ key: "dashboard", name: "Tableros", icon: "dashboard", href: "/dashboard", match: ["/dashboard"], nav: [] });
   if (ctx.flags.has("intelligence.ask") && ctx.can("intelligence.ask")) {
     apps.push({ key: "ask", name: "Ask Workezt", icon: "ask", href: "/ask", match: ["/ask"], nav: [] });
   }
-  apps.push(
-    { key: "approvals", name: "Aprobaciones", icon: "approvals", href: "/approvals", match: ["/approvals"], nav: [] },
-    { key: "tasks", name: "Tareas", icon: "tasks", href: "/tasks", match: ["/tasks"], nav: [] },
-  );
+  if (ctx.can("approvals.read")) apps.push({ key: "approvals", name: "Aprobaciones", icon: "approvals", href: "/approvals", match: ["/approvals"], nav: [] });
+  if (ctx.can("tasks.read")) apps.push({ key: "tasks", name: "Tareas", icon: "tasks", href: "/tasks", match: ["/tasks"], nav: [] });
 
   for (const m of MODULES) {
     if (m.status !== "available" || !ctx.hasModule(m.key)) continue;

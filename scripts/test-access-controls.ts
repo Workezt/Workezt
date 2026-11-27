@@ -1,10 +1,10 @@
 import "dotenv/config";
 import assert from "node:assert/strict";
-import { canGrantPermissions } from "@/lib/core/permissions";
+import { canGrantPermissions, DEFAULT_SHARED_ACCESS, hasPermission, membershipPermissions } from "@/lib/core/permissions";
 import { canReadResourceRow, listResource, positiveInteger, RESOURCES } from "@/lib/core/api-v1";
 import type { ApiContext } from "@/lib/core/api-auth";
 import { safeRedirectPath } from "@/lib/core/redirect-path";
-import { summarize } from "@/lib/core/permission-catalog";
+import { buildPersonalCatalog, personalPermissionsFromForm, summarize } from "@/lib/core/permission-catalog";
 
 async function main() {
   for (const path of ["https://external.invalid", "//external.invalid", "/\\external.invalid", "/\n/external.invalid"]) assert.equal(safeRedirectPath(path), "/");
@@ -16,6 +16,24 @@ async function main() {
   assert.equal(canGrantPermissions(["sales.*", "scope:own:sales"], ["sales.*"]), false);
   assert.equal(canGrantPermissions(["sales.*", "deny:costs"], ["sales.quotes.read", "deny:costs"]), true);
   assert.equal(canGrantPermissions(["*"], ["sales.*"]), true);
+  const catalog = buildPersonalCatalog(new Set(["inventory"]), []);
+  const form = new FormData();
+  form.set("lvl:inventory", "read");
+  form.set("lvl:tasks", "read");
+  form.append("permissions", "scope:own:sales");
+  form.append("permissions", "custom.hidden.write");
+  const base = ["inventory.*", "custom.hidden.read", "scope:own:sales"];
+  const personal = personalPermissionsFromForm(form, catalog, base, ["hidden"]);
+  assert.equal(hasPermission(personal, "inventory.read"), true);
+  assert.equal(hasPermission(personal, "inventory.write"), false);
+  assert.equal(hasPermission(personal, "custom.hidden.read"), true);
+  assert.equal(hasPermission(personal, "custom.hidden.write"), false);
+  assert.ok(personal.includes("scope:own:sales"));
+  assert.equal(hasPermission(personal, "tasks.read"), true);
+  assert.equal(hasPermission(personal, "tasks.write"), false);
+  assert.equal(hasPermission(personal, "dashboard.read"), false);
+  assert.deepEqual(membershipPermissions({ permissionsOverride: [], role: { permissions: base } }), []);
+  assert.deepEqual(membershipPermissions({ permissionsOverride: null, role: { permissions: base } }), [...base, ...DEFAULT_SHARED_ACCESS]);
   for (const value of ["Infinity", "NaN", "1.5", "-1", "0", null]) assert.equal(positiveInteger(value, 25, 100), 25);
   assert.equal(positiveInteger("200", 25, 100), 100);
   const calls: { where: { ownerId?: string; OR?: unknown[] }; take?: number }[] = [];

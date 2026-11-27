@@ -31,9 +31,10 @@ function Content({ type, text }: { type: string; text: string }) {
 
 /** Actividad del registro: comentarios, seguimientos pendientes y línea de tiempo por día. */
 export async function Chatter({ ctx, entityType, entityId, canWrite }: { ctx: OrgContext; entityType: string; entityId: string; canWrite: boolean }) {
+  const canEditTasks = ctx.can("tasks.write");
   const [items, tasks, users] = await Promise.all([
     ctx.db.activity.findMany({ where: { entityType, entityId }, orderBy: { createdAt: "desc" }, take: 100 }),
-    ctx.db.task.findMany({ where: { sourceType: entityType, sourceId: entityId, status: "OPEN" }, orderBy: { dueDate: "asc" } }),
+    ctx.can("tasks.read") ? ctx.db.task.findMany({ where: { sourceType: entityType, sourceId: entityId, status: "OPEN" }, orderBy: { dueDate: "asc" } }) : [],
     orgUsers(ctx),
   ]);
   const people = new Map((await prisma.user.findMany({ where: { id: { in: [...items.map((i) => i.userId ?? ""), ...tasks.map((t) => t.assigneeId ?? "")].filter(Boolean) } } })).map((u) => [u.id, u.name]));
@@ -45,7 +46,7 @@ export async function Chatter({ ctx, entityType, entityId, canWrite }: { ctx: Or
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 id="activity-title" className="font-display text-lg font-semibold">Actividad</h2>
       </div>
-      <ChatterComposer entityType={entityType} entityId={entityId} users={users} canWrite={canWrite} />
+      <ChatterComposer entityType={entityType} entityId={entityId} users={users} canWrite={canWrite} canEditTasks={canEditTasks} />
       {tasks.length > 0 && (
         <div className="mt-5">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">Seguimientos pendientes</p>
@@ -56,8 +57,8 @@ export async function Chatter({ ctx, entityType, entityId, canWrite }: { ctx: Or
                 <li key={t.id} className="flex items-start gap-3 rounded-xl bg-stone-50 p-3">
                   <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${late ? "bg-rose-500" : "bg-amber-400"}`} aria-hidden="true" />
                   <div className="min-w-0 flex-1 text-sm"><p className="font-medium">{t.title}</p><p className="text-xs text-stone-500">{late ? "Vencido" : t.dueDate?.toLocaleDateString("es-CO", { day: "numeric", month: "short" }) ?? "Sin fecha"} · {t.description ?? "Por hacer"} · {people.get(t.assigneeId ?? "") ?? "—"}</p></div>
-                  <form action={completeActivity}><input type="hidden" name="entityType" value={entityType} /><input type="hidden" name="entityId" value={entityId} /><input type="hidden" name="taskId" value={t.id} />
-                    <button className="rounded-full bg-white px-3 py-1 text-xs font-medium text-stone-700 shadow-sm hover:text-emerald-700">Completar</button></form>
+                  {canEditTasks && <form action={completeActivity}><input type="hidden" name="entityType" value={entityType} /><input type="hidden" name="entityId" value={entityId} /><input type="hidden" name="taskId" value={t.id} />
+                    <button className="rounded-full bg-white px-3 py-1 text-xs font-medium text-stone-700 shadow-sm hover:text-emerald-700">Completar</button></form>}
                 </li>
               );
             })}

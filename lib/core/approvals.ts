@@ -27,7 +27,7 @@ export async function requestApproval(
 }
 
 export function canDecide(ctx: OrgContext, requiredRoleKey: string) {
-  return ctx.role.key === requiredRoleKey || ctx.can("approvals.override");
+  return ctx.can("approvals.write") && (ctx.role.key === requiredRoleKey || ctx.can("approvals.override"));
 }
 
 export async function decideApproval(ctx: OrgContext, approvalId: string, approve: boolean, comment?: string) {

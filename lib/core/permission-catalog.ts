@@ -22,10 +22,20 @@ export function buildCatalog(activeModules: Set<string>, customEntities: { key: 
     const used = new Set(areas.flatMap((a) => [`${a.prefix}.read`, `${a.prefix}.write`]));
     groups.push({ key: m.key, name: APP_NAMES[m.key] ?? m.name, areas, extras: m.permissions.filter((p) => !used.has(p.key)) });
   }
-  if (customEntities.length) {
-    groups.push({ key: "custom", name: "Objetos de Builder", extras: [], areas: customEntities.map((c) => ({ prefix: `custom.${c.key}`, label: c.labelPlural })) });
+  for (const custom of customEntities) {
+    groups.push({ key: `x:${custom.key}`, name: custom.labelPlural, extras: [], areas: [{ prefix: `custom.${custom.key}`, label: "Registros" }] });
   }
   return groups;
+}
+
+/** Herramientas que históricamente están disponibles para todos los roles base. */
+export function buildPersonalCatalog(activeModules: Set<string>, customEntities: { key: string; labelPlural: string }[]): AppGroup[] {
+  return [
+    { key: "dashboard", name: "Tableros", areas: [], extras: [{ key: "dashboard.read", label: "Ver tableros" }] },
+    { key: "tasks", name: "Tareas", areas: [{ prefix: "tasks", label: "Tareas y seguimientos" }], extras: [] },
+    { key: "approvals", name: "Aprobaciones", areas: [{ prefix: "approvals", label: "Aprobaciones del perfil base" }], extras: [] },
+    ...buildCatalog(activeModules, customEntities),
+  ];
 }
 
 /** Nombres en español para las apps (el registro usa nombres en inglés). */
@@ -75,4 +85,29 @@ export function summarize(granted: readonly string[], catalog: AppGroup[]) {
   if (granted.includes("deny:costs")) parts.push("sin costos");
   if (granted.includes("deny:export")) parts.push("sin exportar");
   return parts.length ? parts : ["Sin acceso a apps"];
+}
+
+/** Conserva permisos ajenos al editor y convierte los comodines editables en permisos concretos. */
+export function personalPermissionsFromForm(form: FormData, catalog: AppGroup[], previous: readonly string[], customKeys: readonly string[]) {
+  const editable = new Set([
+    ...catalog.flatMap((group) => [
+      ...group.areas.flatMap(({ prefix }) => [`${prefix}.read`, `${prefix}.write`]),
+      ...group.extras.map(({ key }) => key),
+    ]),
+    ...CORE_PERMISSIONS.map(({ key }) => key),
+    ...RESTRICTIONS.map(({ key }) => key),
+    ...SCOPES.map(({ key }) => key),
+  ]);
+  const known = [
+    ...MODULES.flatMap(({ permissions }) => permissions.map(({ key }) => key)),
+    ...customKeys.flatMap((key) => [`custom.${key}.read`, `custom.${key}.write`]),
+  ];
+  const editableKeys = [...editable];
+  const preserved = previous.flatMap((permission) => {
+    if (editable.has(permission)) return [];
+    if (!editableKeys.some((key) => hasPermission([permission], key))) return [permission];
+    return known.filter((key) => !editable.has(key) && hasPermission([permission], key));
+  });
+  const selected = permissionsFromForm(form, catalog, []).filter((key) => editable.has(key));
+  return [...new Set([...preserved, ...selected])];
 }

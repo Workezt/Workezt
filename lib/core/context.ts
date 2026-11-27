@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "./prisma";
 import { tenantDb, type TenantDb } from "./db";
 import { readSession } from "./auth";
-import { hasPermission, isRestricted, type Restriction } from "./permissions";
+import { membershipPermissions, hasPermission, isRestricted, type Restriction } from "./permissions";
 import { getModule } from "@/lib/modules/registry";
 
 /** Contexto mínimo para ejecutar lógica de negocio (requests, cron, seeds, API). */
@@ -75,7 +75,7 @@ export const getContext = cache(async (): Promise<OrgContext | null> => {
   const modules = new Set(mods.map((m) => m.moduleKey).filter((k) => getModule(k)));
   const overrides = new Map(flagOverrides.map((f) => [f.flagKey, f.enabled]));
   const flags = new Set(flagDefs.filter((f) => overrides.get(f.key) ?? f.defaultEnabled).map((f) => f.key));
-  const permissions = active.role.permissions;
+  const permissions = membershipPermissions(active);
 
   return {
     orgId: org.id,

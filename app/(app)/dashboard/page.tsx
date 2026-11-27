@@ -1,5 +1,5 @@
 import Link from "@/components/plink";
-import { requireContext } from "@/lib/core/context";
+import { requirePermission } from "@/lib/core/context";
 import { availableBoards, makeRange, PERIODS, type Kpi, type RankTable } from "@/lib/analytics/boards";
 import { AreaChart, BarChart, Legend } from "@/components/charts";
 import { compactCop, money } from "@/lib/ui/format";
@@ -65,7 +65,7 @@ function Ranking({ t }: { t: RankTable }) {
 }
 
 export default async function Dashboards({ searchParams }: PageProps<"/dashboard">) {
-  const ctx = await requireContext();
+  const ctx = await requirePermission("dashboard.read");
   const sp = await searchParams;
   const boards = availableBoards(ctx);
   const key = typeof sp.board === "string" ? sp.board : "overview";
